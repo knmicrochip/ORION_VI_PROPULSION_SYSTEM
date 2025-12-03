@@ -15,7 +15,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 # --- KONFIGURACJA SIECI ---
-BROKER_ADDRESS = "192.168.1.1"   # <-- Zmień na IP
+BROKER_ADDRESS = "192.168.1.1"   # <-- IP Twojego ESP32 (lub brokera)
 BROKER_PORT = 1883
 
 # Tematy MQTT
@@ -26,6 +26,7 @@ TOPIC_CMD          = "odrive/cmd"
 # --- KONFIGURACJA STEROWANIA ---
 ABSOLUTE_MAX_LIMIT = 30.0  
 JOYSTICK_DEADZONE = 0.2    
+STEERING_AXIS_INDEX = 4    # <--- Oś 5 (indeksowanie od 0, więc 4 to 5. oś)
 
 # --- KONFIGURACJA KOŁA ---
 WHEEL_DIAMETER_CM = 45.0
@@ -74,7 +75,7 @@ client = None
 
 # Licznik do optymalizacji wykresu
 plot_refresh_counter = 0 
-PLOT_SKIP_FRAMES = 4  # Odświeżaj wykres co 4 klatki (czyli co 200ms zamiast 50ms)
+PLOT_SKIP_FRAMES = 4  # Odświeżaj wykres co 4 klatki
 
 # Zmienne sterowania
 key_throttle = 0.0     
@@ -92,11 +93,12 @@ FG_COLOR = "#ffffff"
 BTN_RESET_COLOR = "#cc3333"
 BTN_CMD_COLOR = "#0055aa"
 BTN_FULL_START_COLOR = "#228822"
-BTN_REBOOT_COLOR = "#aa0000" 
+BTN_REBOOT_COLOR = "#aa0000"
+BTN_DUMP_COLOR = "#d35400" # Kolor przycisku Dump Errors
 
 # --- TKINTER SETUP ---
 root = tk.Tk()
-root.title("ODrive Control Optimized")
+root.title("ODrive Control + Steering")
 root.configure(bg=BG_COLOR)
 root.attributes('-fullscreen', True) 
 
@@ -157,7 +159,7 @@ tk.Label(instr_frame, text="[ESC] - Okno", bg=BG_COLOR, fg="#888").pack()
 plot_frame = tk.LabelFrame(left_frame, text="Wykres Prędkości (Target vs Measured)", bg=BG_COLOR, fg=FG_COLOR)
 plot_frame.pack(side="bottom", fill="both", expand=True, pady=(20, 0))
 
-# Optymalizacja wykresu: Ustawiamy tło i parametry raz
+# Optymalizacja wykresu
 fig = Figure(figsize=(4, 3), dpi=100, facecolor=BG_COLOR)
 ax = fig.add_subplot(111)
 ax.set_facecolor(BG_COLOR)
@@ -173,7 +175,6 @@ canvas_plot = FigureCanvasTkAgg(fig, master=plot_frame)
 canvas_plot.get_tk_widget().pack(fill="both", expand=True)
 
 def update_plot():
-    # Sprawdzamy czy mamy dane
     if len(plot_data_x) > 1:
         line_target.set_data(plot_data_x, plot_data_target)
         line_meas.set_data(plot_data_x, plot_data_meas)
@@ -181,8 +182,6 @@ def update_plot():
         ax.set_xlim(min(plot_data_x), max(plot_data_x) + 0.1)
         limit = ABSOLUTE_MAX_LIMIT * 1.1
         ax.set_ylim(-limit, limit)
-        
-        # draw_idle jest lżejsze niż draw, ale nadal kosztowne
         canvas_plot.draw_idle()
 
 # ==========================================
@@ -190,10 +189,17 @@ def update_plot():
 # ==========================================
 gauge_frame = tk.LabelFrame(center_frame, text="Wskaźniki", bg=BG_COLOR, fg=FG_COLOR)
 gauge_frame.pack(pady=10, fill="both")
+
 gauge_canvas = tk.Canvas(gauge_frame, width=400, height=300, bg=BG_COLOR, highlightthickness=0)
 gauge_canvas.pack(pady=10)
+
+# Etykieta Target
 target_label = tk.Label(gauge_frame, text="Target: 0.0 RPS", bg=BG_COLOR, fg=FG_COLOR, font=("Arial", 24, "bold"))
 target_label.pack()
+
+# Etykieta Steering (NOWA)
+steering_label = tk.Label(gauge_frame, text="Steering: 0.00", bg=BG_COLOR, fg="#FFAA00", font=("Arial", 16))
+steering_label.pack(pady=(0, 10))
 
 feedback_frame = tk.LabelFrame(center_frame, text="Feedback & Diagnostyka", bg=BG_COLOR, fg="#00ff00")
 feedback_frame.pack(pady=20, fill="x", padx=10)
@@ -251,7 +257,13 @@ def on_message(client, userdata, msg):
     global measured_velocity, measured_position, last_feedback_time
     last_feedback_time = time.time()
     try:
+        # Próba dekodowania JSON (standardowy feedback prędkości)
         payload = json.loads(msg.payload.decode())
+        
+        # Jeśli JSON zawiera pole "error" lub inne komunikaty
+        if "error" in payload:
+             log_mqtt(f"!! ERROR: {payload['error']}")
+
         measured_velocity = payload.get("v_meas", 0.0)
         measured_position = payload.get("p_meas", 0.0)
         
@@ -276,7 +288,15 @@ def on_message(client, userdata, msg):
             else: lbl_system_lag.config(fg="red")
         else:
             if abs(measured_velocity) < 0.5: lbl_system_lag.config(text="Lag: (Stop)", fg="#555")
-    except: pass
+
+    except json.JSONDecodeError:
+        # Jeśli wiadomość NIE JEST JSON-em (np. zrzut błędów tekstowych z ESP32)
+        # Wyświetl ją bezpośrednio w konsoli
+        raw_msg = msg.payload.decode()
+        log_mqtt(f"MSG: {raw_msg}")
+    except Exception as e:
+        # Inne błędy parsowania
+        pass
 
 def init_mqtt():
     global client
@@ -333,10 +353,14 @@ tk.Button(cmd_frame, text="1. KALIBRACJA", command=lambda: send_cmd("calibrate")
 tk.Button(cmd_frame, text="2. CLOSED LOOP", command=lambda: send_cmd("closed_loop"), bg="#006600", fg="white", height=1).pack(fill="x", padx=10, pady=2)
 tk.Button(cmd_frame, text="3. TRYB VELOCITY", command=lambda: send_cmd("set_vel_mode"), bg="#004488", fg="white", height=1).pack(fill="x", padx=10, pady=2)
 tk.Button(cmd_frame, text="4. RAMP MODE", command=lambda: send_cmd("set_ramp_mode"), bg="#550088", fg="white", height=1).pack(fill="x", padx=10, pady=2)
+
+# --- NOWY PRZYCISK DUMP ERRORS ---
+tk.Button(cmd_frame, text="DUMP ERRORS (odrv0)", command=lambda: send_cmd("dump_errors"), bg=BTN_DUMP_COLOR, fg="white", height=1, font=("Arial", 10, "bold")).pack(fill="x", padx=10, pady=(10, 2))
+
 tk.Button(cmd_frame, text="⚠ REBOOT ODRIVE", command=lambda: send_cmd("reboot_odrive"), bg=BTN_REBOOT_COLOR, fg="white", height=1, font=("Arial", 10, "bold")).pack(fill="x", padx=10, pady=(10, 2))
 
 # ==========================================
-# 4. LOGIKA GŁÓWNA (ZOPTYMALIZOWANA PĘTLA)
+# 4. LOGIKA GŁÓWNA
 # ==========================================
 
 def draw_gauge(canvas, val, max_v):
@@ -393,13 +417,37 @@ def main_loop():
     pygame.event.pump()
     target_rps = calculate_speed()
     
+    # ---------------------------------------------
+    # OBSŁUGA SKRĘTU (AXIS 5 / INDEX 4)
+    # ---------------------------------------------
+    steering_val = 0.0
+    if joysticks:
+        try:
+            joy = joysticks[0]
+            # Sprawdzamy, czy kontroler ma wystarczającą liczbę osi
+            if joy.get_numaxes() > STEERING_AXIS_INDEX:
+                steering_val = joy.get_axis(STEERING_AXIS_INDEX)
+            else:
+                # Fallback: Jeśli brak osi 5, spróbuj osi 2 (np. prawa gałka poziomo)
+                if joy.get_numaxes() > 2:
+                    steering_val = joy.get_axis(2)
+        except: 
+            pass
+
     # 1. Komunikacja i dane (Zawsze)
     if client and client.is_connected():
-        client.publish(TOPIC_SET_VELOCITY, json.dumps({"velocity": round(target_rps, 3)}))
+        # Tworzenie payloadu JSON: Prędkość + Skręt
+        payload = {
+            "velocity": round(target_rps, 3),
+            "steering": round(steering_val, 3) # Wartość od -1.0 do 1.0
+        }
+        client.publish(TOPIC_SET_VELOCITY, json.dumps(payload))
         latency_estimator.push_target(target_rps)
     
     # 2. Aktualizacja GUI (Zegary, Tekst) - Co klatkę
     target_label.config(text=f"Target: {target_rps:.2f} RPS")
+    steering_label.config(text=f"Steering: {steering_val:.2f}") # Aktualizacja etykiety skrętu
+    
     draw_gauge(gauge_canvas, target_rps, ABSOLUTE_MAX_LIMIT)
     
     if last_feedback_time > 0:
