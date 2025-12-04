@@ -1,62 +1,79 @@
-# comms.py
 import paho.mqtt.client as mqtt
 import json
 import time
-from config import *
+import config
 
-class MQTTHandler:
-    def __init__(self, log_callback):
-        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
-        self.log_callback = log_callback # Funkcja do logowania w GUI
-        self.connected = False
-        
-        # Dane odebrane
-        self.measured_velocity = 0.0
-        self.measured_position = 0.0
-        self.last_feedback_time = 0.0
-        
-        self.client.on_connect = self._on_connect
-        self.client.on_message = self._on_message
+class MqttManager:
+    def __init__(self, app_state):
+        self.client = None
+        self.state = app_state
 
-    def start(self):
+    def connect(self):
+        self.state.log("--- Inicjalizacja MQTT ---")
         try:
-            self.client.connect(BROKER_ADDRESS, BROKER_PORT)
+            # Używamy dokładnie tej samej wersji API co w Twoim pliku
+            self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+            
+            self.client.on_connect = self._on_connect
+            self.client.on_message = self._on_message
+            
+            self.state.log(f"Łączenie z {config.BROKER_ADDRESS}...")
+            self.client.connect(config.BROKER_ADDRESS, config.BROKER_PORT)
             self.client.loop_start()
+            
         except Exception as e:
-            self.log_callback(f"MQTT Error: {e}")
+            self.state.mqtt_status_text = "MQTT: Błąd"
+            self.state.log(f"Błąd krytyczny połączenia: {e}")
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc == 0:
-            self.connected = True
-            self.log_callback(">> MQTT Połączono.")
-            self.client.subscribe(TOPIC_FEEDBACK)
+            self.state.mqtt_connected = True
+            self.state.mqtt_status_text = "MQTT: POŁĄCZONO"
+            client.subscribe(config.TOPIC_FEEDBACK)
+            self.state.log(">> Połączono z brokerem (RC=0).")
         else:
-            self.log_callback(f"MQTT Connect Fail rc={rc}")
+            self.state.mqtt_status_text = f"MQTT: Błąd {rc}"
+            self.state.log(f"Błąd połączenia, kod: {rc}")
 
     def _on_message(self, client, userdata, msg):
-        self.last_feedback_time = time.time()
+        self.state.last_feedback_time = time.time()
         try:
+            # Dekodowanie JSON dokładnie tak jak w Twoim pliku
             payload = json.loads(msg.payload.decode())
-            if "error" in payload:
-                self.log_callback(f"!! ERROR: {payload['error']}")
             
-            self.measured_velocity = payload.get("v_meas", 0.0)
-            self.measured_position = payload.get("p_meas", 0.0)
+            if "error" in payload:
+                self.state.log(f"!! ERROR: {payload['error']}")
+
+            # Pobieranie v_meas i p_meas
+            self.state.measured_velocity = payload.get("v_meas", 0.0)
+            self.state.measured_position = payload.get("p_meas", 0.0)
+            
+            # Lag estimator (jeśli używasz utils.py z poprzedniej wersji)
+            self.state.latency_estimator.estimate_lag(self.state.measured_velocity)
             
         except json.JSONDecodeError:
-            self.log_callback(f"MSG: {msg.payload.decode()}")
-        except Exception:
+            raw = msg.payload.decode()
+            self.state.log(f"MSG (RAW): {raw}")
+        except Exception as e:
+            # Ciche ignorowanie błędów parsowania, żeby nie spamować konsoli
             pass
 
-    def send_velocity(self, velocity, steering):
-        if self.connected:
+    def send_drive_command(self):
+        """Wysyła ramkę sterującą JSON: velocity + steering"""
+        if self.client and self.state.mqtt_connected:
+            # Dokładnie ta sama struktura JSON co w aplikacja_new_with_servo.py
             payload = {
-                "velocity": round(velocity, 3),
-                "steering": round(steering, 3)
+                "velocity": round(self.state.target_rps, 3),
+                "steering": round(self.state.steering_val, 3)
             }
-            self.client.publish(TOPIC_SET_VELOCITY, json.dumps(payload))
+            try:
+                self.client.publish(config.TOPIC_SET_VELOCITY, json.dumps(payload))
+                self.state.latency_estimator.push_target(self.state.target_rps)
+            except Exception as e:
+                self.state.log(f"Błąd wysyłania: {e}")
 
     def send_cmd(self, cmd):
-        if self.connected:
-            self.client.publish(TOPIC_CMD, cmd)
-            self.log_callback(f">> CMD: {cmd}")
+        """Wysyła proste komendy tekstowe (calibrate, closed_loop itp.)"""
+        if self.client and self.state.mqtt_connected:
+            self.client.publish(config.TOPIC_CMD, cmd)
+            self.state.log(f">> CMD: {cmd}")

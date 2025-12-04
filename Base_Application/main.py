@@ -1,70 +1,57 @@
-# main.py
 import tkinter as tk
-from comms import MQTTHandler
+from utils import AppState
 from inputs import InputManager
-from utils import LatencyEstimator
-from gui import AppGUI
+from comms import MqttManager
+from gui import DashboardGUI
 
-# Inicjalizacja głównych obiektów
-root = tk.Tk()
-root.title("ODrive Modular Control")
-root.geometry("1200x800")
-
-# Input Manager
-input_mgr = InputManager()
-
-# Latency
-latency = LatencyEstimator()
-
-# GUI (przekazujemy placeholder dla mqtt, bo mqtt potrzebuje callbacka do GUI)
-# Rozwiązanie: stworzymy GUI, potem MQTT, potem przypiszemy MQTT do GUI
-# Ale prościej: Przekażmy funkcję logowania później lub użyjmy wrappera.
-# Tutaj zrobimy to prosto:
-
-app = None # Placeholder
-
-def log_wrapper(msg):
-    if app: app.log(msg)
-    else: print(msg)
-
-mqtt_handler = MQTTHandler(log_wrapper)
-app = AppGUI(root, mqtt_handler, input_mgr)
-
-# Binds klawiatury globalne
-root.bind("<KeyPress>", lambda e: input_mgr.handle_keyboard('press', e.keysym))
-root.bind("<KeyRelease>", lambda e: input_mgr.handle_keyboard('release', e.keysym))
-root.bind("<Escape>", lambda e: root.attributes('-fullscreen', False))
-
-# Zmienne pętli
-plot_counter = 0
-
-def main_loop():
-    global plot_counter
+def main():
+    # 1. Inicjalizacja Głównego Okna
+    root = tk.Tk()
+    root.title("ODrive Control Modular")
+    root.attributes('-fullscreen', True)
     
-    # 1. Pobierz wejścia
-    vel, steer, limit = input_mgr.get_control_values()
+    # 2. Inicjalizacja Stanu i Modułów
+    app_state = AppState()
+    input_manager = InputManager()
+    mqtt_manager = MqttManager(app_state)
     
-    # 2. Wyślij do ODrive
-    mqtt_handler.send_velocity(vel, steer)
-    latency.push_target(vel)
+    # 3. Inicjalizacja GUI
+    gui = DashboardGUI(root, app_state, input_manager, mqtt_manager)
     
-    # 3. Oblicz Lag
-    meas_vel = mqtt_handler.measured_velocity
-    lag = latency.estimate_lag(meas_vel)
+    # 4. Bindings (Klawiatura musi być podpięta pod root)
+    def on_key_press(event):
+        if event.keysym.lower() == 'escape':
+            root.attributes('-fullscreen', False)
+            root.geometry("1200x800")
+        else:
+            input_manager.handle_keyboard('press', event.keysym)
+
+    def on_key_release(event):
+        input_manager.handle_keyboard('release', event.keysym)
+
+    root.bind("<KeyPress>", on_key_press)
+    root.bind("<KeyRelease>", on_key_release)
+
+    # 5. Start MQTT
+    mqtt_manager.connect()
     
-    # 4. Aktualizuj GUI
-    app.update(vel, steer, limit, lag)
-    
-    # Wykres rzadziej (co 4 klatki = ok. 200ms)
-    plot_counter += 1
-    if plot_counter % 4 == 0:
-        app.update_plot_canvas()
+    # 6. Pętla Główna
+    def main_loop():
+        # A. Odczyt wejść (Joystick/Klawiatura) -> Aktualizacja AppState
+        input_manager.update(app_state)
         
-    root.after(50, main_loop)
+        # B. Wysłanie komend do ODrive przez MQTT
+        mqtt_manager.send_drive_command()
+        
+        # C. Odświeżenie GUI (Wykresy, Labele)
+        gui.update_interface()
+        
+        # D. Planowanie kolejnej klatki (50ms = 20 FPS odświeżania logiki)
+        root.after(50, main_loop)
 
-# START
-if __name__ == "__main__":
-    mqtt_handler.start()
-    app._reset_joysticks_ui() # Odśwież listę po starcie GUI
+    gui.refresh_joysticks()
     main_loop()
     root.mainloop()
+
+if __name__ == "__main__":
+    main()
