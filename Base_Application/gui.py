@@ -3,6 +3,8 @@ from tkinter import ttk, scrolledtext
 import threading
 import time
 from collections import deque
+import subprocess
+import platform
 
 # Matplotlib
 import matplotlib
@@ -27,7 +29,82 @@ class DashboardGUI:
         self.plot_counter = 0
 
         self.setup_ui()
+        self._start_network_monitor()
+    
+    def _ping_host(self, ip):
+        """Pomocnicza funkcja pingująca dany adres IP (nieblokująca)"""
+        param = '-n' if platform.system().lower() == 'windows' else '-c'
+        timeout_param = '-w' if platform.system().lower() == 'windows' else '-W'
+        timeout_val = '500' if platform.system().lower() == 'windows' else '1' # 500ms dla Win, 1s dla Linux
         
+        try:
+            # Pingujemy 1 pakiet z krótkim timeoutem
+            command = ['ping', param, '5', timeout_param, timeout_val, ip]
+            # Używamy subprocess.call z ukryciem wyjścia (stdout=DEVNULL)
+            response = subprocess.call(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return response == 0
+        except Exception:
+            return False
+
+    def _check_connection(self, host, port=None):
+        """
+        Uniwersalna funkcja sprawdzająca połączenie.
+        Dla Brokera (port podany) -> Używa szybkiego testu TCP (socket).
+        Dla Routera (brak portu) -> Używa systemowego PING.
+        """
+        try:
+            if port:
+                # METODA 1: Test TCP (Socket) - Idealna dla MQTT
+                # Działa natychmiastowo i sprawdza czy usługa faktycznie działa
+                import socket
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(0.5) # Max 500ms czekania
+                result = sock.connect_ex((host, port))
+                sock.close()
+                return result == 0 # 0 oznacza sukces (połączono)
+            
+            else:
+                # METODA 2: Systemowy Ping (ICMP) - Dla Routera
+                param = '-n' if platform.system().lower() == 'windows' else '-c'
+                timeout_param = '-w' if platform.system().lower() == 'windows' else '-W'
+                # Windows: timeout w ms (500), Linux: timeout w s (1)
+                timeout_val = '500' if platform.system().lower() == 'windows' else '1'
+                
+                cmd = ['ping', param, '1', timeout_param, timeout_val, host]
+                
+                # Ukrycie mrugającego okna konsoli na Windows
+                startupinfo = None
+                if platform.system().lower() == 'windows':
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+                # stdout=subprocess.DEVNULL ucisza wyjście w konsoli
+                response = subprocess.call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, startupinfo=startupinfo)
+                return response == 0
+                
+        except Exception as e:
+            print(f"Błąd sprawdzania sieci: {e}")
+            return False
+
+    def _start_network_monitor(self):
+        """Uruchamia wątek sprawdzający połączenie w tle"""
+        def monitor_loop():
+            print(">> [System] Start monitorowania sieci (Ping/Socket)...")
+            while True:
+                # 1. Sprawdzenie Brokera (192.168.1.1 na porcie 1883)
+                # To wykryje odłączenie kabla znacznie szybciej niż ping
+                self.state.ping_broker_ok = self._check_connection("192.168.1.1", 1883)
+                
+                # 2. Sprawdzenie Routera (192.168.1.102, 192.168.1.101 przez PING)
+                self.state.ping_router_ok = self._check_connection("192.168.1.102", 443)
+                self.state.ping_ground_ok = self._check_connection("192.168.1.101", 443)
+                # Opcjonalnie: Debug w konsoli (odkomentuj, jeśli nadal będą problemy)
+                # print(f"[NetCheck] Broker: {self.state.ping_broker_ok}, Router: {self.state.ping_router_ok}")
+                
+                time.sleep(1) # Sprawdzaj co 1 sekundę
+
+        threading.Thread(target=monitor_loop, daemon=True).start()
+    
     def setup_ui(self):
         self.root.configure(bg=config.BG_COLOR)
         # Layout Frames
@@ -140,16 +217,40 @@ class DashboardGUI:
         header_frame = tk.Frame(self.right_frame, bg=config.BG_COLOR)
         header_frame.pack(fill="x", side="top", pady=(0, 5))
 
-        self.lbl_mqtt_status = tk.Label(header_frame, text="MQTT: Rozłączono", 
-                                      bg=config.BG_COLOR, fg=config.FG_COLOR, font=("Arial", 12))
-        self.lbl_mqtt_status.pack(side="left")
+        # 1. Lewa strona nagłówka: Status tekstowy MQTT
+        status_col = tk.Frame(header_frame, bg=config.BG_COLOR)
+        status_col.pack(side="left")
+        self.lbl_mqtt_status = tk.Label(status_col, text="MQTT: --", 
+                                      bg=config.BG_COLOR, fg=config.FG_COLOR, font=("Arial", 10))
+        self.lbl_mqtt_status.pack(anchor="w")
 
-        self.btn_reconnect = tk.Button(header_frame, text="Reconnect", command=self.reconnect_mqtt, 
-                                     bg="#d9534f", fg="white", font=("Arial", 9, "bold"))
-        self.btn_reconnect.pack(side="right")
-        # --- ZMIANA END ---
+        # 2. Prawa strona nagłówka: Diody PING + Przycisk Reconnect
+        controls_col = tk.Frame(header_frame, bg=config.BG_COLOR)
+        controls_col.pack(side="right")
 
-        # Reszta istniejącego kodu (konsola)...
+        # --- SEKCJA DIOD (Zaktualizowana) ---
+        # Zwiększamy szerokość width=200, żeby zmieścić 3 diody
+        self.led_canvas = tk.Canvas(controls_col, width=200, height=25, bg=config.BG_COLOR, highlightthickness=0)
+        self.led_canvas.pack(side="top", pady=(0, 5))
+
+        # 1. Ground (.101) - Pierwsze ogniwo (Ty)
+        self.led_ground = self.led_canvas.create_oval(5, 5, 20, 20, fill="grey", outline="white")
+        self.led_canvas.create_text(25, 12, text="Gnd", fill="white", anchor="w", font=("Arial", 8))
+
+        # 2. Rover (.100) - Drugie ogniwo (Most)
+        self.led_router = self.led_canvas.create_oval(65, 5, 80, 20, fill="grey", outline="white")
+        self.led_canvas.create_text(85, 12, text="Rover", fill="white", anchor="w", font=("Arial", 8))
+
+        # 3. Broker (.1) - Cel (Mózg)
+        self.led_broker = self.led_canvas.create_oval(130, 5, 145, 20, fill="grey", outline="white")
+        self.led_canvas.create_text(150, 12, text="MQTT", fill="white", anchor="w", font=("Arial", 8))
+
+        # Przycisk Reconnect (z poprzedniego zadania)
+        self.btn_reconnect = tk.Button(controls_col, text="Reconnect MQTT", command=self.reconnect_mqtt, 
+                                     bg="#d9534f", fg="white", font=("Arial", 8, "bold"), width=15)
+        self.btn_reconnect.pack(side="top")
+
+        # ... (Dalsza część metody bez zmian: console, cmd_frame itp.) ...
         self.console = scrolledtext.ScrolledText(self.right_frame, bg="#222", fg="#0f0", height=15, font=("Consolas", 10))
         self.console.pack(fill="both", expand=True, pady=5)
         
@@ -258,7 +359,19 @@ class DashboardGUI:
         trip_turns = self.state.measured_position - self.state.start_position_offset
         trip_distance_m = trip_turns * config.DISTANCE_PER_MOTOR_REV
         self.lbl_dist.config(text=f"Dystans: {trip_distance_m:.2f} m")
+        
+        # --- AKTUALIZACJA 3 DIOD SIECIOWYCH ---
+        color_ground = "#00ff00" if self.state.ping_ground_ok else "#444"
+        color_router = "#00ff00" if self.state.ping_router_ok else "#444"
+        color_broker = "#00ff00" if self.state.ping_broker_ok else "#444"
+        
+        # Ostrzeżenie: Jeśli mamy połączenie MQTT, a system twierdzi że brak sieci, dajemy żółty
+        if self.state.mqtt_connected and not self.state.ping_broker_ok:
+             color_broker = "orange"
 
+        self.led_canvas.itemconfig(self.led_ground, fill=color_ground)
+        self.led_canvas.itemconfig(self.led_router, fill=color_router)
+        self.led_canvas.itemconfig(self.led_broker, fill=color_broker)
         # 3. Packet Age
         if self.state.last_feedback_time > 0:
             diff_ms = (time.time() - self.state.last_feedback_time) * 1000.0

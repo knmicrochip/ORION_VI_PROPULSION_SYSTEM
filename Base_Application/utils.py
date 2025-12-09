@@ -49,6 +49,13 @@ class AppState:
         
         # Narzędzia
         self.latency_estimator = LatencyEstimator(maxlen=100)
+        self.mqtt_status_text = "MQTT: Rozłączono"
+        
+        # --- NOWE: Statusy PING ---
+        self.ping_broker_ok = False   # Dla 192.168.1.1
+        self.ping_router_ok = False   # Dla 192.168.1.102
+        self.ping_ground_ok = False   # Dla 192.168.1.101
 
     def log(self, message):
         self.logs.append(message)
+    
