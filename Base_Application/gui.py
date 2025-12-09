@@ -136,28 +136,42 @@ class DashboardGUI:
         self.lbl_lag.pack(anchor="w", padx=10, pady=(5,10))
 
     def _build_right_panel(self):
-        self.lbl_mqtt_status = tk.Label(self.right_frame, text="MQTT: Rozłączono", bg=config.BG_COLOR, fg=config.FG_COLOR, font=("Arial", 12))
-        self.lbl_mqtt_status.pack(anchor="w")
-        
+        # --- ZMIANA START: Pasek nagłówka z przyciskiem Reconnect ---
+        header_frame = tk.Frame(self.right_frame, bg=config.BG_COLOR)
+        header_frame.pack(fill="x", side="top", pady=(0, 5))
+
+        self.lbl_mqtt_status = tk.Label(header_frame, text="MQTT: Rozłączono", 
+                                      bg=config.BG_COLOR, fg=config.FG_COLOR, font=("Arial", 12))
+        self.lbl_mqtt_status.pack(side="left")
+
+        self.btn_reconnect = tk.Button(header_frame, text="Reconnect", command=self.reconnect_mqtt, 
+                                     bg="#d9534f", fg="white", font=("Arial", 9, "bold"))
+        self.btn_reconnect.pack(side="right")
+        # --- ZMIANA END ---
+
+        # Reszta istniejącego kodu (konsola)...
         self.console = scrolledtext.ScrolledText(self.right_frame, bg="#222", fg="#0f0", height=15, font=("Consolas", 10))
         self.console.pack(fill="both", expand=True, pady=5)
         
+        # ... (reszta przycisków cmd_frame bez zmian) ...
         cmd_frame = tk.LabelFrame(self.right_frame, text="Polecenia ODrive", bg=config.BG_COLOR, fg=config.FG_COLOR)
         cmd_frame.pack(fill="x", side="bottom", pady=20)
         
+        # ... (pozostałe przyciski: btn_full_start itp.) ...
         self.btn_full_start = tk.Button(cmd_frame, text="★ FULL START (AUTO) ★", command=self.run_full_start, 
                                         bg=config.BTN_FULL_START_COLOR, fg="white", height=2, font=("Arial", 11, "bold"))
         self.btn_full_start.pack(fill="x", padx=10, pady=(10, 20))
         
+        # (Tutaj powinna być reszta Twoich przycisków z oryginalnego pliku)
         tk.Button(cmd_frame, text="1. KALIBRACJA", command=lambda: self.mqtt_manager.send_cmd("calibrate"), 
                   bg="#AA8800", fg="white", height=1).pack(fill="x", padx=10, pady=2)
-        
+                  
         tk.Button(cmd_frame, text="2. CLOSED LOOP", command=lambda: self.mqtt_manager.send_cmd("closed_loop"), 
                   bg="#006600", fg="white", height=1).pack(fill="x", padx=10, pady=2)
-        
+                  
         tk.Button(cmd_frame, text="3. TRYB VELOCITY", command=lambda: self.mqtt_manager.send_cmd("set_vel_mode"), 
                   bg="#004488", fg="white", height=1).pack(fill="x", padx=10, pady=2)
-        
+                  
         tk.Button(cmd_frame, text="4. RAMP MODE", command=lambda: self.mqtt_manager.send_cmd("set_ramp_mode"), 
                   bg="#550088", fg="white", height=1).pack(fill="x", padx=10, pady=2)
 
@@ -166,7 +180,6 @@ class DashboardGUI:
         
         tk.Button(cmd_frame, text="⚠ REBOOT ODRIVE", command=lambda: self.mqtt_manager.send_cmd("reboot_odrive"), 
                   bg=config.BTN_REBOOT_COLOR, fg="white", height=1, font=("Arial", 10, "bold")).pack(fill="x", padx=10, pady=(10, 2))
-
     def refresh_joysticks(self):
         joysticks = self.input_manager.scan_joysticks()
         for widget in self.joystick_list_frame.winfo_children():
@@ -176,7 +189,29 @@ class DashboardGUI:
         for i, joy in enumerate(joysticks):
             joy_name = joy.get_name()[:15]
             tk.Label(self.joystick_list_frame, text=f"Joy {i}: {joy_name}", bg=config.BG_COLOR, fg="white").pack(anchor="w")
+    def reconnect_mqtt(self):
+        """Obsługa przycisku Reconnect w osobnym wątku"""
+        def _worker():
+            self.state.log(">> [GUI] Próba ręcznego reconnectu...")
+            try:
+                # Jeśli klient już istnieje, próbujemy funkcji reconnect() z biblioteki paho
+                if self.mqtt_manager.client:
+                    self.mqtt_manager.client.reconnect()
+                    self.state.log(">> [GUI] Wysłano żądanie reconnect().")
+                else:
+                    # Jeśli klient nie istnieje (np. błąd przy starcie), inicjalizujemy od nowa
+                    self.mqtt_manager.connect()
+            except Exception as e:
+                self.state.log(f"!! Błąd reconnect: {e}")
+                # Fallback: próba pełnej reinicjalizacji
+                try:
+                    self.mqtt_manager.connect()
+                except Exception as e2:
+                    self.state.log(f"!! Błąd fatalny reconnect: {e2}")
 
+        # Uruchomienie w tle, aby nie blokować GUI
+        threading.Thread(target=_worker, daemon=True).start()
+    
     def reset_trip(self):
         self.state.start_position_offset = self.state.measured_position
         self.lbl_dist.config(text="Dystans: 0.00 m")
