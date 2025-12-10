@@ -1,8 +1,26 @@
+import sys
+import os
+import multiprocessing # <--- DODAJ IMPORT
+
+# === FIX 1: Naprawa błędu Matplotlib (File already exists) ===
+# Ten kod musi być PRZED importem gui i matplotlib!
+if getattr(sys, 'frozen', False):
+    import tempfile
+    # Ustawiamy cache matplotlib w folderze tymczasowym systemu
+    # Dzięki temu nie próbuje pisać w zablokowanych folderach PyInstallera
+    config_dir = os.path.join(tempfile.gettempdir(), 'orion_mpl_config')
+    os.environ['MPLCONFIGDIR'] = config_dir
+    try:
+        os.makedirs(config_dir, exist_ok=True)
+    except Exception:
+        pass
+# =============================================================
 import tkinter as tk
 from utils import AppState
 from inputs import InputManager
 from comms import MqttManager
 from gui import DashboardGUI
+
 
 def main():
     # 1. Inicjalizacja Głównego Okna
@@ -54,4 +72,5 @@ def main():
     root.mainloop()
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()
