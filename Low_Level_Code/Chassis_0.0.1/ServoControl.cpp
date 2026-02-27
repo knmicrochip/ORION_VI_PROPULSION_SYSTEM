@@ -6,8 +6,8 @@ TaskHandle_t ServoTaskHandle;
 
 void initServo() {
   Serial.print("Init LEDC on Pin "); Serial.print(SERVO_PIN); Serial.println("...");
-  ledcSetup(LEDC_CHANNEL, LEDC_FREQ, LEDC_RESOLUTION);
-  ledcAttachPin(SERVO_PIN, LEDC_CHANNEL);
+// This single line sets the frequency and resolution and attaches the pin
+  ledcAttach(SERVO_PIN, LEDC_FREQ, LEDC_RESOLUTION);
   setServoMicroseconds(MID_PULSE);
   
   Serial.println("Creating Servo Task...");
@@ -27,7 +27,7 @@ void setServoMicroseconds(int us) {
   if (us > MAX_PULSE) us = MAX_PULSE;
   
   long duty = ((long)us * 65536L) / 20000L;
-  ledcWrite(LEDC_CHANNEL, duty);
+  ledcWrite(SERVO_PIN, duty);
 }
 
 void servoTask(void * parameter) {
