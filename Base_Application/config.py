@@ -1,3 +1,4 @@
+#config.py
 import math
 
 # --- KONFIGURACJA SIECI ---
@@ -5,9 +6,26 @@ BROKER_ADDRESS = "192.168.1.1"   # IP brokera/ESP32
 BROKER_PORT = 1883
 
 # Tematy MQTT
+# Tematy MQTT - Lewa strona (domyślna)
 TOPIC_SET_VELOCITY = "odrive/set_velocity"
 TOPIC_FEEDBACK     = "odrive/feedback"
 TOPIC_CMD          = "odrive/cmd"
+
+# Tematy MQTT - Prawa strona
+TOPIC_SET_VELOCITY_RIGHT = "odrive_right/set_velocity_right"
+TOPIC_FEEDBACK_RIGHT     = "odrive_right/feedback_right"
+TOPIC_CMD_RIGHT          = "odrive_right/cmd_right"
+
+# Komendy MQTT
+CMD_MAP = {
+    "none": 0,
+    "calibrate": 1,
+    "closed_loop": 2,
+    "set_vel_mode": 3,
+    "set_ramp_mode": 4,
+    "dump_errors": 5,
+    "reboot_odrive": 6
+}
 
 # --- KONFIGURACJA STEROWANIA ---
 ABSOLUTE_MAX_LIMIT = 30.0  
