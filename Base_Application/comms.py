@@ -34,7 +34,8 @@ class MqttManager:
         if rc == 0:
             self.state.mqtt_connected = True
             self.state.mqtt_status_text = "MQTT: POŁĄCZONO"
-            client.subscribe(config.TOPIC_FEEDBACK)
+            client.subscribe(config.TOPIC_FEEDBACK_LEFT)
+            client.subscribe(config.TOPIC_FEEDBACK_RIGHT)
             self.state.log(">> Połączono z brokerem (RC=0).")
         else:
             self.state.mqtt_status_text = f"MQTT: Błąd {rc}"
@@ -100,11 +101,8 @@ class MqttManager:
                     # Generujemy JSONa raz
                     payload_json = json.dumps(payload)
                     
-                    # Publikacja na oryginalny temat
+                    # Publikacja na wspólny temat
                     self.client.publish(config.TOPIC_SET_VELOCITY, payload_json)
-                    
-                    # Publikacja zduplikowana na prawą stronę
-                    self.client.publish(f"{config.TOPIC_SET_VELOCITY}_right", payload_json)
                     
                     self.state.latency_estimator.push_target(self.state.target_rps)
                 except Exception as e:
@@ -156,11 +154,8 @@ class MqttManager:
                 # Generujemy JSONa raz
                 payload_json = json.dumps(payload)
                 
-                # Publikacja na oryginalny temat
+                # Publikacja na wspólny temat komend
                 self.client.publish(config.TOPIC_CMD, payload_json)
-                
-                # Publikacja zduplikowana na prawą stronę
-                self.client.publish(f"{config.TOPIC_CMD}_right", payload_json)
                 
                 self.state.log(f">> CMD: {cmd} ({target}) -> {payload}")
             except Exception as e:
