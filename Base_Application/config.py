@@ -6,10 +6,9 @@ BROKER_ADDRESS = "192.168.1.1"   # IP brokera/ESP32
 BROKER_PORT = 1883
 
 # Tematy MQTT
-TOPIC_SET_VELOCITY = "propulsion/set_velocity"
 TOPIC_CMD          = "propulsion/cmd"
 TOPIC_FEEDBACK_LEFT = "propulsion/feedback_left"
-TOPIC_FEEDBACK_RIGHT = "propulsion_right/feedback_right"
+TOPIC_FEEDBACK_RIGHT = "propulsion/feedback_right"
 
 
 # Komendy MQTT

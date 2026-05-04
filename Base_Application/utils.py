@@ -34,6 +34,9 @@ class ODrive:
         self.measured_position = 0.0
         self.start_position_offset = 0.0
         self.last_feedback_time = 0.0
+        # NOWE POLA DLA SERWO
+        self.servo_current = 0.0
+        self.servo_angle_deg = 0.0
 
 class AppState:
     """Klasa przechowująca współdzielony stan aplikacji"""

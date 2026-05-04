@@ -53,60 +53,81 @@ class MqttManager:
         try:
             payload = json.loads(msg.payload.decode())
             
-            if "error" in payload:
-                if "odrive_id" in payload:
-                    self.state.log(f"!! ERROR: {payload['error']} (odrive_id: {payload['odrive_id']})")
-                self.state.log(f"!! ERROR: {payload['error']} (odrive_id: -)")
-                return
-            
+            # Obsługa logowania błędów 
             if isinstance(payload, dict) and "error" in payload:
                 oid = payload.get("odrive_id", "-")
                 self.state.log(f"!! ODRIVE ERROR: {payload['error']} (ID: {oid})")
-                return # Exit here
+                return 
 
-            if not isinstance(payload, list) or len(payload) != 5:
-                self.state.log(f"!! ERROR: feedback data is of a wrong format: {payload}")
-                return
+            # Obsługa nowego formatu telemetrii (obiekt JSON z kluczami zamiast listy)
+            if isinstance(payload, dict) and "side_id" in payload:
+                side = str(payload["side_id"])
+                
+                id_front = "0" + side
+                id_rear  = "1" + side
+                
+                vel_front = payload.get("vel_front", 0.0)
+                pos_front = payload.get("pos_front", 0.0)
+                vel_rear  = payload.get("vel_rear", 0.0)
+                pos_rear  = payload.get("pos_rear", 0.0)
+                
+                # Dodano: Pobranie wartości prądu z serw (A - przód, B - tył)
+                cfb_a = payload.get("servoA_cfb", 0.0)
+                cfb_b = payload.get("servoB_cfb", 0.0)
+                
+                # Zapis do współdzielonego stanu (AppState)
+                self.state.o_drives[id_front].measured_velocity = vel_front
+                self.state.o_drives[id_front].measured_position = pos_front
+                self.state.o_drives[id_front].servo_current = cfb_a
+                self.state.o_drives[id_front].last_feedback_time = time.time()
+                
+                self.state.o_drives[id_rear].measured_velocity = vel_rear
+                self.state.o_drives[id_rear].measured_position = pos_rear
+                self.state.o_drives[id_rear].servo_current = cfb_b
+                self.state.o_drives[id_rear].last_feedback_time = time.time()
 
-            side:int8 = payload[0]
-            estimate_lag_sum:float = 0
-
-            for i in range(2):
-                self.state.o_drives[str(i) + str(side)].measured_velocity = payload[i * 2 + 1]
-                self.state.o_drives[str(i) + str(side)].measured_position = payload[i * 2 + 2]
-                self.state.o_drives[str(i) + str(side)].last_feedback_time = time.time()
-                estimate_lag_sum += self.state.o_drives[str(i) + str(side)].measured_velocity
-
-            # TODO: separate lag calculation and storage for both sides. 
-            # Now, it pushes latency only for one side read at a time, calculating the mean value
-            # Lag estimator (jeśli używasz utils.py z poprzedniej wersji)
-            self.state.latency_estimator.estimate_lag(estimate_lag_sum / 2)
-            
-            
+                # Estymacja opóźnień
+                estimate_lag_sum = vel_front + vel_rear
+                self.state.latency_estimator.estimate_lag(estimate_lag_sum / 2.0)
+                
+            elif isinstance(payload, list):
+                self.state.log(f"!! Odrzucono przestarzały format ramki: {payload}")
+                                  
         except json.JSONDecodeError:
             raw = msg.payload.decode()
             self.state.log(f"[JSON DECODE ERROR] MSG (RAW): {raw}")
         except Exception as e:
-            # Ciche ignorowanie błędów parsowania, żeby nie spamować konsoli
             pass
 
     def send_drive_command(self):
-            """Wysyła ramkę sterującą JSON: velocity + steering"""
-            if self.client and self.state.mqtt_connected:
-                payload = {
-                    "velocity": round(self.state.target_rps, 3),
-                    "steering": round(self.state.steering_val, 3)
+        """Wysyła ramkę sterującą JSON (velocity + steering) w formacie zgodnym z nowym ESP32"""
+        if self.client and self.state.mqtt_connected:
+            v = round(self.state.target_rps, 3)
+            s = round(self.state.steering_val, 3)
+            
+            # Nowa architektura: eventType + zgrupowane prędkości i skręty wewnątrz "velocity"
+            payload = {
+                "eventType": "propulsion",
+                "velocity": {
+                    "fl_speed": v,
+                    "rl_speed": v,
+                    "fr_speed": v,
+                    "rr_speed": v,
+                    "fl_rad": s,
+                    "rl_rad": s,
+                    "fr_rad": s,
+                    "rr_rad": s
                 }
-                try:
-                    # Generujemy JSONa raz
-                    payload_json = json.dumps(payload)
-                    
-                    # Publikacja na wspólny temat
-                    self.client.publish(config.TOPIC_SET_VELOCITY, payload_json)
-                    
-                    self.state.latency_estimator.push_target(self.state.target_rps)
-                except Exception as e:
-                    self.state.log(f"Błąd wysyłania: {e}")
+            }
+            try:
+                payload_json = json.dumps(payload)
+                # Używamy teraz głównego TOPIC_CMD zgodnie z config.h ESP32
+                self.client.publish(config.TOPIC_CMD, payload_json) 
+                
+                self.state.latency_estimator.push_target(self.state.target_rps)
+            except Exception as e:
+                self.state.log(f"Błąd wysyłania: {e}")
+            
 
     def send_cmd(self, cmd, target="a"):
             """

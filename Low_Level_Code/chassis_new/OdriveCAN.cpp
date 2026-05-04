@@ -67,20 +67,20 @@ void handleCANMessages() {
     int nodeId = (id >> 5) & 0x3F;
     
     if (cmdId == CMD_ID_GET_ENCODER && packetSize >= 8) {
-       uint8_t buffer[8];
-       CAN.readBytes(buffer, 8);
-       float pos, vel;
-       memcpy(&pos, &buffer[0], 4);
-       memcpy(&vel, &buffer[4], 4);
-       
-       if (nodeId == ODRIVE_FRONT_ID) {
-           measuredPosFront = pos;
-           measuredVelFront = vel;
-       } else if (nodeId == ODRIVE_REAR_ID) {
-           measuredPosRear = pos;
-           measuredVelRear = vel;
-       }
-    }
+        uint8_t buffer[8];
+        CAN.readBytes(buffer, 8);
+        float pos, vel;
+        memcpy(&pos, &buffer[0], 4);
+        memcpy(&vel, &buffer[4], 4);
+                
+        if (nodeId == ODRIVE_FRONT_ID) {
+            measuredPosFront = pos * DIR_FRONT; // Korekta kierunku
+            measuredVelFront = vel * DIR_FRONT; // Korekta kierunku
+        } else if (nodeId == ODRIVE_REAR_ID) {
+            measuredPosRear = pos * DIR_REAR;   // Korekta kierunku
+            measuredVelRear = vel * DIR_REAR;   // Korekta kierunku
+        }
+     }
     else if (cmdId == CMD_ID_GET_ERROR && packetSize >= 4) {
        uint8_t buffer[4];
        CAN.readBytes(buffer, 4);

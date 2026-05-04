@@ -278,14 +278,13 @@ class DashboardGUI:
         # --- Speed container ---
         speed_container = tk.Frame(frame, bg=config.BG_COLOR)
         speed_container.pack(anchor="w", padx=10, pady=2)
-
         widgets["lbl_kmh"] = tk.Label(
             speed_container, text="0.0 km/h",
             bg=config.BG_COLOR, fg="#ff00ff",
             font=("Consolas", 16, "bold")
         )
         widgets["lbl_kmh"].pack(side="left", padx=(0, 15))
-
+        
         widgets["lbl_ms"] = tk.Label(
             speed_container, text="0.00 m/s",
             bg=config.BG_COLOR, fg="#ff88ff",
@@ -293,6 +292,22 @@ class DashboardGUI:
         )
         widgets["lbl_ms"].pack(side="left")
 
+        # --- NOWE WSKAŹNIKI SERWA ---
+        widgets["lbl_servo_current"] = tk.Label(
+            speed_container, text="0.00 A",
+            bg=config.BG_COLOR, fg="#FFAA00",  # Kolor pomarańczowy
+            font=("Consolas", 12, "bold")
+        )
+        # padx=(15, 5) tworzy odstęp po lewej stronie (oddziela prąd od prędkości m/s)
+        widgets["lbl_servo_current"].pack(side="left", padx=(15, 5))
+
+        widgets["lbl_servo_angle"] = tk.Label(
+            speed_container, text="0.0°",
+            bg=config.BG_COLOR, fg="#00FFFF",  # Kolor błękitny
+            font=("Consolas", 12)
+        )
+        widgets["lbl_servo_angle"].pack(side="left")
+        
         # --- Position ---
         widgets["lbl_pos"] = tk.Label(
             frame, text="Pozycja: 0.00 obr",
@@ -494,20 +509,23 @@ class DashboardGUI:
             widgets = self.odrive_widgets.get(odrive_id)
             if not widgets:
                 continue
-
             meas_rps = odrv.measured_velocity
             speed_ms = meas_rps * config.DISTANCE_PER_MOTOR_REV
             speed_kmh = speed_ms * 3.6
-
+            
             widgets["lbl_rps"].config(text=f"RPS: {meas_rps:.2f}")
             widgets["lbl_kmh"].config(text=f"{speed_kmh:.1f} km/h")
             widgets["lbl_ms"].config(text=f"{speed_ms:.2f} m/s")
-
             widgets["lbl_pos"].config(text=f"Pozycja: {odrv.measured_position:.2f} obr")
+            
+            # --- AKTUALIZACJA SERWO ---
+            # Obliczenie kąta w stopniach. Twój docelowy zakres w ESP32 to 1.0 radian (ok 57.3 st.)
+            angle_deg = self.state.steering_val * 57.2958
+            
+            widgets["lbl_servo_current"].config(text=f"{odrv.servo_current:.2f} A")
+            widgets["lbl_servo_angle"].config(text=f"{angle_deg:.1f}°")
 
             trip_turns = odrv.measured_position - odrv.start_position_offset
-            trip_distance = trip_turns * config.DISTANCE_PER_MOTOR_REV
-            widgets["lbl_dist"].config(text=f"Dystans: {trip_distance:.2f} m")
 
             # Packet Age
             if odrv.last_feedback_time > 0:
@@ -567,13 +585,14 @@ class DashboardGUI:
         self.plot_data_meas.append(self.state.o_drives["00"].measured_velocity)
 
         if self.plot_counter % config.PLOT_SKIP_FRAMES == 0 and len(self.plot_data_x) > 1:
-            self.line_target.set_data(self.plot_data_x, self.plot_data_target)
-            self.line_meas.set_data(self.plot_data_x, self.plot_data_meas)
+            # Rzutowanie deque na list() rozwiązuje problem z linterem i stabilnością
+            self.line_target.set_data(list(self.plot_data_x), list(self.plot_data_target))
+            self.line_meas.set_data(list(self.plot_data_x), list(self.plot_data_meas))
+            
             self.ax.set_xlim(min(self.plot_data_x), max(self.plot_data_x) + 0.1)
             limit = config.ABSOLUTE_MAX_LIMIT * 1.1
             self.ax.set_ylim(-limit, limit)
             self.canvas_plot.draw_idle()
-        
         self.plot_counter += 1
 
     def _draw_gauge(self, val):

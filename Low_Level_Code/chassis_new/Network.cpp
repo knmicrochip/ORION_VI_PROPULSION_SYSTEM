@@ -8,6 +8,8 @@ const char* mqtt_server = "192.168.1.1";
 EthernetClient ethClient;
 PubSubClient client(ethClient);
 
+// Funkcja executeCommand(...) zostaje bez zmian, pominąłem dla czytelności kodu...
+// (skopiuj ją ze swojego poprzedniego pliku)
 void executeCommand(int cmd, int node_id) {
     switch(cmd) {
         case 1: setAxisState(node_id, AXIS_STATE_ENCODER_OFFSET_CALIBRATION); break;
@@ -20,36 +22,35 @@ void executeCommand(int cmd, int node_id) {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  if (length > 512) return;    
+  if (length > 1024) return;    
   String topicStr = String(topic);
   String messageTemp;
   messageTemp.reserve(length);
   for (unsigned int i = 0; i < length; i++) messageTemp += (char)payload[i];
   
-  if (topicStr == TOPIC_SET_VEL) {
-    StaticJsonDocument<512> doc;
+  if (topicStr == TOPIC_CMD) {
+    StaticJsonDocument<1024> doc;
     DeserializationError error = deserializeJson(doc, messageTemp);
-    lastMqttCmdTime = millis();
+    
     if (!error) {
-      if (doc.containsKey("velocity")) targetVelocity = doc["velocity"];
-      if (doc.containsKey("steering")) {
-        float s = doc["steering"];
-        if (s < -1.0f) s = -1.0f;
-        if (s > 1.0f) s = 1.0f;
-        targetSteering = s;
+      if (doc["eventType"] == "propulsion") {
+        JsonObject payloadObj = doc["velocity"];
+        
+        targetVelocityFront = payloadObj[JSON_FRONT_SPEED].as<float>();
+        targetVelocityRear  = payloadObj[JSON_REAR_SPEED].as<float>();
+        
+        // Zczytywanie niezależnego skrętu dla przodu i tyłu
+        targetSteeringFront = payloadObj[JSON_FRONT_STEER].as<float>();
+        targetSteeringRear  = payloadObj[JSON_REAR_STEER].as<float>();
+        
+        lastMqttCmdTime = millis();
       }
-    }
-  }
-  else if (topicStr == TOPIC_CMD) {
-    StaticJsonDocument<512> doc;
-    DeserializationError error = deserializeJson(doc, messageTemp);
-    lastMqttCmdTime = millis();
-         
-    if (!error && doc.is<JsonArray>()) {
+      // 2. Zachowanie zgodności wstecznej (starsza komenda kalibracji z tablicą [] )
+      else if (doc.is<JsonArray>()) {
         JsonArray arr = doc.as<JsonArray>();
         if(arr.size() == 5) {
-            int lf_cmd = arr[CMD_IDX_FRONT]; // Zależne od konfiguracji
-            int lr_cmd = arr[CMD_IDX_REAR];  // Zależne od konfiguracji
+            int lf_cmd = arr[CMD_IDX_FRONT]; 
+            int lr_cmd = arr[CMD_IDX_REAR];  
             int override_cmd = arr[4];
                          
             int cmd_front = override_cmd ? override_cmd : lf_cmd;
@@ -57,6 +58,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
             if(cmd_front != 0) executeCommand(cmd_front, ODRIVE_FRONT_ID);
             if(cmd_rear != 0) executeCommand(cmd_rear, ODRIVE_REAR_ID);
         }
+      }
     }
   }
 }
@@ -64,28 +66,25 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void reconnect() {
   if (!client.connected()) {
       static unsigned long lastRec = 0;
-      static int failedAttempts = 0; // Zmienna statyczna do zliczania nieudanych prób
+      static int failedAttempts = 0; // Zliczanie błędów z poprzedniego kroku
 
       if (millis() - lastRec > 5000) {
         lastRec = millis();
         Serial.print("[MQTT] Connecting to "); Serial.print(mqtt_server); Serial.println("...");
         
-        if (client.connect(MQTT_CLIENT_ID)) {  // Zależne od konfiguracji
+        if (client.connect(MQTT_CLIENT_ID)) {  
           Serial.println("[MQTT] Connected!");
-          failedAttempts = 0;  // Kasujemy licznik błędów po udanym połączeniu
-          
-          client.subscribe(TOPIC_SET_VEL);
+          failedAttempts = 0;  
           client.subscribe(TOPIC_CMD);
         } else {
-          failedAttempts++;  // Zwiększamy licznik po nieudanej próbie
+          failedAttempts++;  
           Serial.print("[MQTT] Failed to connect, attempt: ");
           Serial.println(failedAttempts);
           
-          // Jeśli nie udało się połączyć 5 razy z rzędu, zrób twardy reset Wizneta
           if (failedAttempts >= 5) {
             Serial.println("[NETWORK] 5 failed attempts! Hard resetting Wiznet...");
-            initNetwork();       // Ponowna inicjalizacja sprzętowa i sieciowa
-            failedAttempts = 0;  // Zerujemy licznik, żeby po resecie znów miał 5 prób
+            initNetwork();       
+            failedAttempts = 0;  
           }
         }
       }
@@ -112,13 +111,23 @@ void handleNetwork() {
 
 void sendFeedbackMessage() {
     if (!client.connected()) return;
-    StaticJsonDocument<256> doc;
-    doc.add(FEEDBACK_SIDE_ID); // Zależne od konfiguracji (0 albo 1)
-    doc.add(measuredVelFront);
-    doc.add(measuredPosFront);
-    doc.add(measuredVelRear);
-    doc.add(measuredPosRear);
-    char buffer[256];
+    StaticJsonDocument<512> doc; // Zwiększony dokument, bo dodajemy klucze JSON
+    
+    doc["side_id"] = FEEDBACK_SIDE_ID;
+    
+    // Dane z ODrive
+    doc["vel_front"] = measuredVelFront;
+    doc["pos_front"] = measuredPosFront;
+    doc["vel_rear"]  = measuredVelRear;
+    doc["pos_rear"]  = measuredPosRear;
+    
+    // Dane telemetryczne z Serw
+    doc["servoA_vfb"] = servoVoltageA;
+    doc["servoA_cfb"] = servoCurrentA; // Prąd w Amperach
+    doc["servoB_vfb"] = servoVoltageB;
+    doc["servoB_cfb"] = servoCurrentB; // Prąd w Amperach
+
+    char buffer[512];
     serializeJson(doc, buffer);
     client.publish(TOPIC_FEEDBACK, buffer);
 }
