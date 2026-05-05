@@ -1,7 +1,3 @@
-**
-
----
-
 ## 🧩 Moduły Główne
 
 ### Aplikacja Bazowa (Python)
