@@ -142,3 +142,7 @@ void sendErrorMessage(uint32_t errorDesc, int odrive_id) {
     serializeJson(doc, errBuf);
     client.publish(TOPIC_FEEDBACK, errBuf);
 }
+
+bool isMqttConnected() {
+    return client.connected();
+}

@@ -14,5 +14,7 @@ void initNetwork();
 void handleNetwork();
 void sendFeedbackMessage();
 void sendErrorMessage(uint32_t errorDesc, int odrive_id);
+bool isMqttConnected();
+
 
 #endif

@@ -38,7 +38,7 @@
   #define CMD_IDX_FRONT 2
   #define CMD_IDX_REAR 3
   #define FEEDBACK_SIDE_ID 1
-  #define MQTT_PUB_INTERVAL 120
+  #define MQTT_PUB_INTERVAL 100
 
   #define DIR_FRONT -1.0f 
   #define DIR_REAR  -1.0f
@@ -58,30 +58,39 @@
 #define CAN_TX_PIN    26
 #define CAN_RX_PIN    25
 
+
+// PINY DODATKOWE 
+
+#define NEOPIXEL_PIN 7 
+
 // --- PINY SERW I SENSORÓW (Zgodnie z podanym schematem) ---
-constexpr uint8_t SV_CFB_B     = GPIO_NUM_15;
-constexpr uint8_t SV_CFB_A     = GPIO_NUM_2;
-constexpr uint8_t SV_VFB_A     = GPIO_NUM_0;
-constexpr uint8_t SV_VFB_B     = GPIO_NUM_4;
-constexpr uint8_t SV_A_PIN     = GPIO_NUM_33;
-constexpr uint8_t SV_B_PIN     = GPIO_NUM_32;
+#define SV_CFB_B     15
+#define SV_CFB_A     2
+#define SV_VFB_A     0
+#define SV_VFB_B     4
+#define SV_A_PIN     33
+#define SV_B_PIN     32
 
 // --- KONFIGURACJA CAN ---
 #define CAN_BAUDRATE  500000
 #define ODRIVE_FRONT_ID 0x00
 #define ODRIVE_REAR_ID  0x01
 
+// --- KONFIGURACJA SERWA --
 // --- KONFIGURACJA SERWA ---
-#define LEDC_CHANNEL_A  0
-#define LEDC_CHANNEL_B  1
-#define LEDC_FREQ       50       
-#define LEDC_RESOLUTION 16       
-const int MIN_PULSE = 500;       
-const int MAX_PULSE = 2500;      
-const int MID_PULSE = 1500;      
-const float SMOOTH_FACTOR = 0.08;  
-const float DEADBAND = 3.0;
-#define MAX_STEER_RAD 1.0f
+// (Usuń SMOOTH_FACTOR i DEADBAND, jeśli jeszcze je masz)
+const int MIN_PULSE = 500; 
+const int MAX_PULSE = 2500; 
+const int MID_PULSE = 1500; 
+#define MAX_STEER_RAD 1.0f 
+
+// ==========================================
+// USTAWIENIA PID DLA SKRĘTU (ZABEZPIECZENIA)
+// ==========================================
+#define STEER_KP 2.5f        // (Proporcjonalny) Jak agresywnie goni cel
+#define STEER_KI 0.1f        // (Całkujący) Niweluje uchyb ustalony
+#define STEER_KD 0.05f       // (Różniczkujący) Hamuje przed celem, zapobiega oscylacjom
+#define STEER_MAX_VEL 1.5f   // ZABEZPIECZENIE: Maksymalna prędkość skrętu (radiany na sekundę)
 
 // --- PARAMETRY POMIARÓW ADC (ACS712 - 5A) ---
 const float ADC_VREF = 3.3f;        // Napięcie referencyjne ESP32
@@ -117,6 +126,6 @@ extern uint32_t activeErrorsFront;
 extern uint32_t activeErrorsRear;
 
 extern const unsigned long SAFETY_TIMEOUT;
-extern unsigned long lastMqttCmdTime; 
+extern unsigned long lastMqttCmdTime;
 
 #endif
