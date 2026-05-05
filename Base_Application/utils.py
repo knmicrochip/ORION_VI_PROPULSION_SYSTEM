@@ -1,11 +1,12 @@
+# utils.py
 import time
 from collections import deque
 
 class LatencyEstimator:
     def __init__(self, maxlen=50):
-        self.history = deque(maxlen=maxlen)
+        self.history:deque[tuple[float, float]] = deque(maxlen=maxlen)
     
-    def push_target(self, target_vel):
+    def push_target(self, target_vel: float):
         self.history.append((time.time(), target_vel))
         
     def estimate_lag(self, current_measured_vel):
@@ -26,14 +27,32 @@ class LatencyEstimator:
             return lag_seconds * 1000.0 
         return None
 
-class AppState:
-    """Klasa przechowująca współdzielony stan aplikacji"""
+class ODrive:
+    """Klasa przechowująca lokalną reprezentację ODrive"""
     def __init__(self):
-        # Dane pomiarowe
         self.measured_velocity = 0.0
         self.measured_position = 0.0
         self.start_position_offset = 0.0
         self.last_feedback_time = 0.0
+        # NOWE POLA DLA SERWO
+        self.servo_current = 0.0
+        self.servo_angle_deg = 0.0
+
+class AppState:
+    """Klasa przechowująca współdzielony stan aplikacji"""
+    def __init__(self):
+        # Dane pomiarowe
+        self.o_drives:dict[str, ODrive] = {
+            "00": ODrive(),
+            "10": ODrive(),
+            "01": ODrive(),
+            "11": ODrive()
+        }
+
+        # self.measured_velocity = 0.0
+        # self.measured_position = 0.0
+        # self.start_position_offset = 0.0
+        # self.last_feedback_time = 0.0
         
         # Dane sterujące
         self.target_rps = 0.0
@@ -49,6 +68,10 @@ class AppState:
         
         # Narzędzia
         self.latency_estimator = LatencyEstimator(maxlen=100)
+
+        self.ping_broker_ok = False
+        self.ping_router_ok = False
+        self.ping_ground_ok = False
 
     def log(self, message):
         self.logs.append(message)

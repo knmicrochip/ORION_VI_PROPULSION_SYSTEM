@@ -1,18 +1,23 @@
+# comms.py
+from numpy import int8, isin
 import paho.mqtt.client as mqtt
 import json
 import time
 import config
+from utils import AppState
 
 class MqttManager:
     def __init__(self, app_state):
         self.client = None
-        self.state = app_state
+        self.state:AppState = app_state
 
     def connect(self):
         self.state.log("--- Inicjalizacja MQTT ---")
         try:
-            # Używamy dokładnie tej samej wersji API co w Twoim pliku
-            self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+            # Używamy dokładnie tej samej wersji API co w Twoim pliku (limited)
+            #self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+
+            self.client = mqtt.Client()
             
             self.client.on_connect = self._on_connect
             self.client.on_message = self._on_message
@@ -29,51 +34,150 @@ class MqttManager:
         if rc == 0:
             self.state.mqtt_connected = True
             self.state.mqtt_status_text = "MQTT: POŁĄCZONO"
-            client.subscribe(config.TOPIC_FEEDBACK)
+            client.subscribe(config.TOPIC_FEEDBACK_LEFT)
+            client.subscribe(config.TOPIC_FEEDBACK_RIGHT)
             self.state.log(">> Połączono z brokerem (RC=0).")
         else:
             self.state.mqtt_status_text = f"MQTT: Błąd {rc}"
             self.state.log(f"Błąd połączenia, kod: {rc}")
 
+    #feedback message:
+    #[
+    #   0: side (0- left|1- right)
+    #   1: measured velocity of the front ODrive
+    #   2: measured position of the front ODrive
+    #   3: measured velocity of the rear ODrive
+    #   4: measured position of the rear ODrive
+    #]
     def _on_message(self, client, userdata, msg):
-        self.state.last_feedback_time = time.time()
         try:
-            # Dekodowanie JSON dokładnie tak jak w Twoim pliku
             payload = json.loads(msg.payload.decode())
             
-            if "error" in payload:
-                self.state.log(f"!! ERROR: {payload['error']}")
+            # Obsługa logowania błędów 
+            if isinstance(payload, dict) and "error" in payload:
+                oid = payload.get("odrive_id", "-")
+                self.state.log(f"!! ODRIVE ERROR: {payload['error']} (ID: {oid})")
+                return 
 
-            # Pobieranie v_meas i p_meas
-            self.state.measured_velocity = payload.get("v_meas", 0.0)
-            self.state.measured_position = payload.get("p_meas", 0.0)
-            
-            # Lag estimator (jeśli używasz utils.py z poprzedniej wersji)
-            self.state.latency_estimator.estimate_lag(self.state.measured_velocity)
-            
+            # Obsługa nowego formatu telemetrii (obiekt JSON z kluczami zamiast listy)
+            if isinstance(payload, dict) and "side_id" in payload:
+                side = str(payload["side_id"])
+                
+                id_front = "0" + side
+                id_rear  = "1" + side
+                
+                vel_front = payload.get("vel_front", 0.0)
+                pos_front = payload.get("pos_front", 0.0)
+                vel_rear  = payload.get("vel_rear", 0.0)
+                pos_rear  = payload.get("pos_rear", 0.0)
+                
+                # Dodano: Pobranie wartości prądu z serw (A - przód, B - tył)
+                cfb_a = payload.get("servoA_cfb", 0.0)
+                cfb_b = payload.get("servoB_cfb", 0.0)
+                
+                # Zapis do współdzielonego stanu (AppState)
+                self.state.o_drives[id_front].measured_velocity = vel_front
+                self.state.o_drives[id_front].measured_position = pos_front
+                self.state.o_drives[id_front].servo_current = cfb_a
+                self.state.o_drives[id_front].last_feedback_time = time.time()
+                
+                self.state.o_drives[id_rear].measured_velocity = vel_rear
+                self.state.o_drives[id_rear].measured_position = pos_rear
+                self.state.o_drives[id_rear].servo_current = cfb_b
+                self.state.o_drives[id_rear].last_feedback_time = time.time()
+
+                # Estymacja opóźnień
+                estimate_lag_sum = vel_front + vel_rear
+                self.state.latency_estimator.estimate_lag(estimate_lag_sum / 2.0)
+                
+            elif isinstance(payload, list):
+                self.state.log(f"!! Odrzucono przestarzały format ramki: {payload}")
+                                  
         except json.JSONDecodeError:
             raw = msg.payload.decode()
-            self.state.log(f"MSG (RAW): {raw}")
+            self.state.log(f"[JSON DECODE ERROR] MSG (RAW): {raw}")
         except Exception as e:
-            # Ciche ignorowanie błędów parsowania, żeby nie spamować konsoli
             pass
 
     def send_drive_command(self):
-        """Wysyła ramkę sterującą JSON: velocity + steering"""
+        """Wysyła ramkę sterującą JSON (velocity + steering) w formacie zgodnym z nowym ESP32"""
         if self.client and self.state.mqtt_connected:
-            # Dokładnie ta sama struktura JSON co w aplikacja_new_with_servo.py
+            v = round(self.state.target_rps, 3)
+            s = round(self.state.steering_val, 3)
+            
+            # Nowa architektura: eventType + zgrupowane prędkości i skręty wewnątrz "velocity"
             payload = {
-                "velocity": round(self.state.target_rps, 3),
-                "steering": round(self.state.steering_val, 3)
+                "eventType": "propulsion",
+                "velocity": {
+                    "fl_speed": v,
+                    "rl_speed": v,
+                    "fr_speed": v,
+                    "rr_speed": v,
+                    "fl_rad": s,
+                    "rl_rad": s,
+                    "fr_rad": s,
+                    "rr_rad": s
+                }
             }
             try:
-                self.client.publish(config.TOPIC_SET_VELOCITY, json.dumps(payload))
+                payload_json = json.dumps(payload)
+                # Używamy teraz głównego TOPIC_CMD zgodnie z config.h ESP32
+                self.client.publish(config.TOPIC_CMD, payload_json) 
+                
                 self.state.latency_estimator.push_target(self.state.target_rps)
             except Exception as e:
                 self.state.log(f"Błąd wysyłania: {e}")
+            
 
-    def send_cmd(self, cmd):
-        """Wysyła proste komendy tekstowe (calibrate, closed_loop itp.)"""
-        if self.client and self.state.mqtt_connected:
-            self.client.publish(config.TOPIC_CMD, cmd)
-            self.state.log(f">> CMD: {cmd}")
+    def send_cmd(self, cmd, target="a"):
+            """
+            target:
+                "a" -> override
+                "l" -> LF+LR
+                "r" -> RF+RR
+                "lf", "lr", "rf", "rr" -> single wheel
+            """
+            if not (self.client and self.state.mqtt_connected):
+                return
+
+            #   command:
+            #   0 - no command,
+            #   1 - calibrate,
+            #   2 - closed_loop,
+            #   3 - set_vel_mode,
+            #   4 - set_ramp_mode,
+            #   5 - dump_errors,
+            #   6 - reboot_odrive
+            
+            if cmd not in config.CMD_MAP:
+                self.state.log(f"[MQTT] Unknown cmd: {cmd}")
+                return
+
+            payload = [0, 0, 0, 0, 0]  # LF, LR, RF, RR, OVERRIDE
+            val = config.CMD_MAP[cmd]
+
+            if target == "a":
+                payload[4] = val
+            elif target == "l":
+                payload[0] = payload[1] = val
+            elif target == "r":
+                payload[2] = payload[3] = val
+            elif target == "lf":
+                payload[0] = val
+            elif target == "lr":
+                payload[1] = val
+            elif target == "rf":
+                payload[2] = val
+            elif target == "rr":
+                payload[3] = val
+
+            try:
+                # Generujemy JSONa raz
+                payload_json = json.dumps(payload)
+                
+                # Publikacja na wspólny temat komend
+                self.client.publish(config.TOPIC_CMD, payload_json)
+                
+                self.state.log(f">> CMD: {cmd} ({target}) -> {payload}")
+            except Exception as e:
+                self.state.log(f"[MQTT] Send error: {e}")

@@ -8,11 +8,13 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include "Config.h"
-#include "ODriveCAN.h" // Potrzebne dla clearErrors()
+#include "ODriveCAN.h"
 
 void initNetwork();
-void handleNetwork(); // Wywoływane w loop()
-void sendFeedbackMessage(float vel, float pos);
-void sendErrorMessage(uint32_t errorDesc);
+void handleNetwork();
+void sendFeedbackMessage();
+void sendErrorMessage(uint32_t errorDesc, int odrive_id);
+bool isMqttConnected();
+
 
 #endif
