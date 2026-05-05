@@ -169,10 +169,3 @@ W GUI wybierz opcje w sekcji *Polecenia ODrive*:
 1. `★ FULL START (AUTO) ★` - Wykona zautomatyzowaną sekwencję (Kalibracja -> Czekaj -> Closed Loop -> Tryb Prędkości (Vel Mode)).
 2. Po tym układ jest uzbrojony i reaguje na polecenia z Gamepada.
 """
-
-with open("/mnt/data/README.md", "w", encoding="utf-8") as f:
-    f.write(content)
-
-print("File generated successfully.")
-
-```
