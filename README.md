@@ -1,169 +1,78 @@
-# ORION_VI_PROPULSION_SYSTEM
+**
 
+---
 
-# 🚗 ODrive MQTT-CAN Bridge & Control Station
+## 🧩 Moduły Główne
 
-A robust remote control system for a generic robotic vehicle platform (4-wheel steering/propulsion). This project bridges a high-level Python Control Station (PC) with low-level hardware (ODrive & Servos) using an **ESP32** via **Ethernet** and **CAN Bus**.
+### Aplikacja Bazowa (Python)
+Aplikacja stworzona w języku Python (kompatybilna z Python 3.10), zapewniająca stację kontroli dla układu napędowego.
+* **`gui.py`**: Definiuje interfejs graficzny, umożliwiając operatorowi odczyt parametrów na żywo.
+* **`comms.py`**: Odpowiada za bezpieczne i niezawodne przesyłanie pakietów danych między stacją bazową a łazikiem.
+* **`inputs.py`**: Tłumaczy sygnały z urządzeń sterujących (np. joysticków) na komendy zrozumiałe dla układu napędowego.
 
+### Kod Niskopoziomowy (C++/Arduino)
+Oprogramowanie mikrokontrolera odpowiedzialne za fizyczne wykonanie poleceń.
+* **`OdriveCAN.cpp` & `OdriveCAN.h`**: Dedykowane klasy do obsługi kontrolerów silników bezszczotkowych (BLDC) ODrive przy użyciu wydajnej magistrali CAN.
+* **`Network.cpp` & `Network.h`**: Zarządzanie protokołami sieciowymi w celu odbierania komend z `Base_Application`.
+* **`chassis_new.ino`**: Pętla główna programu spinająca logikę napędu, odczyty z czujników oraz komunikację.
 
-## 🌟 Features
+---
 
-  * **Hybrid Control:** Simultaneous control of ODrive BLDC motors (via CAN) and Steering Servos (via PWM).
-  * **Low Latency:** Uses wired Ethernet (W5500) and UDP-like MQTT communication for fast response times.
-  * **Python Control Station:** A complete GUI Dashboard built with `Tkinter` and `Pygame`.
-      * Real-time telemetry graphs.
-      * Analog gauges for Speed and Steering.
-      * Gamepad/Joystick support (Xbox/PlayStation controllers).
-      * Keyboard fallback control.
-  * **Safety Watchdog:** The ESP32 automatically halts motors if the connection is lost for more than **500ms**.
-  * **Feedback Loop:** Real-time feedback of estimated velocity and position from the ODrive encoder.
+## 🛠 Wymagania
 
------
+**Dla Aplikacji Bazowej:**
+* Python 3.10 lub nowszy
+* Wymagane pakiety Python (należy uzupełnić na podstawie faktycznych importów, np. `PyQt5`/`Tkinter`, biblioteki do pada).
 
-## 🏗 System Architecture
+**Dla Kodu Niskopoziomowego:**
+* Środowisko Arduino IDE lub PlatformIO.
+* Mikrokontroler wspierający protokół CAN oraz łączność sieciową (np.Oto propozycja poprawionego i profesjonalnego pliku `README.md` dla Twojego projektu, oparta na strukturze plików, którą udostępniłeś[cite: 1]. Podzieliłem opis na logiczne sekcje, aby ułatwić zrozumienie architektury systemu, która składa się z aplikacji bazowej na PC oraz kodu niskopoziomowego.
 
-The system follows a Client-Server architecture over a local network:
+---
 
-1.  **Control Station (PC):** Reads Joystick inputs, calculates physics (differential steering/Ackermann), and publishes commands via MQTT.
-2.  **MQTT Broker:** (e.g., Raspberry Pi or Mosquitto on PC) at `192.168.1.1`.
-3.  **Bridge (ESP32):** Subscribes to MQTT topics and translates commands to:
-      * **CAN Frames:** For ODrive Velocity Control.
-      * **PWM Signals:** For Servo Steering Angle.
-4.  **Actuators:** ODrive v3.6 (Propulsion) and High-Torque Servos (Steering).
+# 🚀 ORION VI Propulsion System
 
------
+**ORION VI Propulsion System** to kompleksowe oprogramowanie sterujące i monitorujące układ napędowy łazika/pojazdu[cite: 1]. System charakteryzuje się architekturą rozproszoną, składającą się z wysokopoziomowej aplikacji z graficznym interfejsem użytkownika (GUI) do zdalnego zarządzania[cite: 1] oraz oprogramowania niskopoziomowego, bezpośrednio kontrolującego sprzęt za pośrednictwem magistrali CAN (w tym kontrolery silników ODrive)[cite: 1].
 
-## 🔌 Hardware Setup
+## 📑 Spis treści
+* [Architektura Systemu](#architektura-systemu)
+* [Struktura Repozytorium](#struktura-repozytorium)
+* [Moduły Główne](#moduły-główne)
+  * [Aplikacja Bazowa (Python)](#aplikacja-bazowa-python)
+  * [Kod Niskopoziomowy (C++/Arduino)](#kod-niskopoziomowy-c-arduino)
+* [Wymagania](#wymagania)
 
-### Pinout Configuration (ESP32)
+---
 
-Ensure your wiring matches the definitions in `ESP32_Propulsion_And_Steering.ino`.
+## 🏗 Architektura Systemu
 
-#### 1\. Ethernet Module (W5500)
+System podzielony jest na dwie główne warstwy:
+1. **High-Level (PC):** Napisana w języku Python aplikacja bazowa z GUI, odpowiedzialna za przetwarzanie danych wejściowych, wyświetlanie telemetrii oraz komunikację ze sterownikiem głównym[cite: 1].
+2. **Low-Level (Embedded):** Oprogramowanie układowe (firmware) oparte na języku C++, które zarządza komunikacją sieciową i bezpośrednio steruje sprzętem (np. kontrolerami ODrive) za pomocą protokołu CAN[cite: 1].
 
-| W5500 Pin | ESP32 Pin | Note |
-| :--- | :--- | :--- |
-| **CS** | **GPIO 21** | *Custom Chip Select* |
-| **RST** | **GPIO 22** | Hardware Reset |
-| MOSI | GPIO 23 | Standard VSPI |
-| MISO | GPIO 19 | Standard VSPI |
-| SCK | GPIO 18 | Standard VSPI |
-| VCC | 3.3V or 5V | Check your module specs |
+---
 
-#### 2\. CAN Bus Transceiver (TJA1050 / SN65HVD230)
-
-| Module Pin | ESP32 Pin | Note |
-| :--- | :--- | :--- |
-| **CTX (TX)** | **GPIO 5** | Transmit |
-| **CRX (RX)** | **GPIO 4** | Receive |
-| CAN H | ODrive CAN H | |
-| CAN L | ODrive CAN L | |
-
-#### 3\. Steering Servos
-
-| Function | ESP32 Pin | PWM Mapping |
-| :--- | :--- | :--- |
-| **Front Servo** | **GPIO 27** | 0° (Right) - 30° (Center) - 130° (Left) |
-| **Rear Servo** | **GPIO 26** | Synchronized with Front |
-
------
-
-## 🛠️ Software Requirements
-
-### 1\. ESP32 Firmware (Arduino IDE)
-
-Install the following libraries via the Arduino Library Manager:
-
-  * `Ethernet` (by Arduino)
-  * `PubSubClient` (by Nick O'Leary)
-  * `CAN` (by Sandeep Mistry)
-  * `ArduinoJson` (by Benoit Blanchon)
-  * `ESP32Servo` (by Kevin Harrington)
-
-**ODrive Configuration:**
-
-  * **Baudrate:** 250k (`250000`)
-  * **Front Motor:** `node_id = 0`
-  * **Rear Motor:** `node_id = 1`
-
-### 2\. PC Application (Python)
-
-Requires Python 3.8+. Install dependencies:
-
-```bash
-pip install pygame paho-mqtt matplotlib
-```
-
-*(Note: `tkinter` is usually included with standard Python installations).*
-
------
-
-## 🚀 Usage
-
-### 1\. Network Configuration
-
-Ensure all devices are on the same subnet (`192.168.1.x`).
-
-  * **MQTT Broker:** `192.168.1.1`
-  * **ESP32 Static IP:** `192.168.1.177` (Defined in firmware)
-
-### 2\. Flash the ESP32
-
-1.  Open `ESP32_Propulsion_And_Steering.ino` in Arduino IDE.
-2.  Select board **ESP32 Dev Module**.
-3.  Upload the code.
-4.  Open Serial Monitor (`115200 baud`) to verify Ethernet and CAN initialization.
-
-### 3\. Run the Control Station
-
-Connect your Joystick and run the script:
-
-```bash
-python app_control_station.py
-```
-
-  * **Press `ESC`** to exit Fullscreen mode.
-  * **Press `★ AUTO START ★`** to calibrate and arm the ODrive.
-
------
-
-## 📡 MQTT API Protocol
-
-The system uses JSON payloads for data exchange.
-
-**Topic Prefix:** `propulsion/`
-
-| Topic | Direction | Payload Example | Description |
-| :--- | :--- | :--- | :--- |
-| `propulsion/set_velocity` | PC -\> ESP | `{"velocity": 12.5}` | Target RPS (Rotations Per Second). |
-| `propulsion/steering` | PC -\> ESP | `{"angle": 45}` | Servo angle (0-130). |
-| `propulsion/cmd` | PC -\> ESP | `"closed_loop"` | System commands: `calibrate`, `closed_loop`, `set_vel_mode`. |
-| `propulsion/feedback` | ESP -\> PC | `{"v": 12.0, "p": 100.5, "angle": 30}` | Real-time telemetry (Velocity, Position, Angle). |
-
------
-
-## 🕹 Controls
-
-| Input | Function |
-| :--- | :--- |
-| **Left Stick Y** | Throttle (Forward / Backward) |
-| **Left Stick X** | Steering (Left / Right) |
-| **Right Trigger** | Speed Limiter (Analog) |
-| **Keyboard W/S** | Throttle |
-| **Keyboard A/D** | Steering (Max Left/Right) |
-
------
-
-## ⚠️ Safety Features
-
-**Connection Watchdog:**
-The ESP32 firmware monitors the time since the last valid MQTT message. If no message is received for **500ms**, the system performs an emergency stop:
-
-1.  Sets ODrive Velocity to `0.0`.
-2.  Logs "Watchdog: STOP" to Serial.
-
------
-
+## 📂 Struktura Repozytorium
+```text
+ORION_VI_PROPULSION_SYSTEM/
+│
+├── Base_Application/       # Wysokopoziomowa aplikacja sterująca (Python)
+│   ├── main.py             # Główny punkt wejścia aplikacji
+│   ├── gui.py              # Logika interfejsu graficznego użytkownika
+│   ├── comms.py            # Moduł komunikacji (np. z warstwą Low-Level)
+│   ├── inputs.py           # Obsługa urządzeń wejściowych (np. pad, klawiatura)
+│   ├── config.py           # Plik konfiguracyjny aplikacji
+│   ├── utils.py            # Funkcje pomocnicze
+│   └── screenshot_app.png  # Zrzut ekranu aplikacji GUI
+│
+├── Low_Level_Code/         # Kod mikrokontrolera (C++/Arduino)
+│   └── chassis_new/        # Główny program dla układu jezdnego
+│       ├── chassis_new.ino # Główny plik projektu Arduino
+│       ├── Network.cpp/.h  # Obsługa połączeń sieciowych
+│       ├── OdriveCAN.cpp/.h# Biblioteka do komunikacji z ODrive po CAN
+│       └── config.h        # Konfiguracja pinów i parametrów sprzętowych
+│
+└── README.md               # Dokumentacja projektu
 ## 📜 License
 
 This project is open-source. Feel free to modify and adapt it to your specific robot chassis.
