@@ -1,4 +1,4 @@
-# main.py
+# PROPULSION CONTROL DASHBOARD - MAIN MODULE
 import tkinter as tk
 from utils import AppState
 from inputs import InputManager
