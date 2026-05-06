@@ -234,22 +234,23 @@ class DashboardGUI:
         # tk.Label(instr, text="[ESC] - Zamknij fullscreen", bg=config.BG_COLOR, fg="#888").pack()
 
         # # Wykres
-        # self.plot_frame = tk.LabelFrame(self.left_frame, text="Wykres Prędkości", bg=config.BG_COLOR, fg=config.FG_COLOR)
+        self.plot_frame = tk.LabelFrame(self.left_frame, text="Wykres Prędkości", bg=config.BG_COLOR, fg=config.FG_COLOR)
         # self.plot_frame.pack(side="bottom", fill="both", expand=True, pady=(20, 0))
+        self.plot_frame.grid(row=2,column=0,columnspan=2,sticky="nsew",pady=(20,0))
         
-        # self.fig = Figure(figsize=(4, 3), dpi=100, facecolor=config.BG_COLOR)
-        # self.ax = self.fig.add_subplot(111)
-        # self.ax.set_facecolor(config.BG_COLOR)
-        # self.ax.tick_params(colors='white')
-        # for spine in self.ax.spines.values(): spine.set_color('white')
-        # self.ax.grid(True, color='#444', linestyle='--')
+        self.fig = Figure(figsize=(4, 3), dpi=100, facecolor=config.BG_COLOR)
+        self.ax = self.fig.add_subplot(111)
+        self.ax.set_facecolor(config.BG_COLOR)
+        self.ax.tick_params(colors='white')
+        for spine in self.ax.spines.values(): spine.set_color('white')
+        self.ax.grid(True, color='#444', linestyle='--')
         
-        # self.line_target, = self.ax.plot([], [], color='#00ffff', label='Target', linestyle='--')
-        # self.line_meas, = self.ax.plot([], [], color='#00ff00', label='Measured')
-        # self.ax.legend(loc="upper right", facecolor=config.BG_COLOR, labelcolor='white', framealpha=0.5)
+        self.line_target, = self.ax.plot([], [], color='#00ffff', label='Target', linestyle='--')
+        self.line_meas, = self.ax.plot([], [], color='#00ff00', label='Measured')
+        self.ax.legend(loc="upper right", facecolor=config.BG_COLOR, labelcolor='white', framealpha=0.5)
         
-        # self.canvas_plot = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
-        # self.canvas_plot.get_tk_widget().pack(fill="both", expand=True)
+        self.canvas_plot = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        self.canvas_plot.get_tk_widget().pack(fill="both", expand=True)
 
     def _build_center_panel(self):
         # Gauge (Zegary)
@@ -550,7 +551,8 @@ class DashboardGUI:
 
         for i, joy in enumerate(joysticks):
             joy_name = joy.get_name()[:15]
-            tk.Label(self.key_guide_container, text=f"Joy {i}: {joy_name}", bg=config.BG_COLOR, fg="white").pack(anchor="w")
+            joy_guid = joy.get_guid()[:15]
+            tk.Label(self.key_guide_container, text=f"Joy {i}: {joy_name} - {joy_guid}", bg=config.BG_COLOR, fg="white").pack(anchor="w")
 
 
     def reset_trip(self, ids: list[str]):

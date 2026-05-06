@@ -77,7 +77,7 @@ class InputManager:
                         joy_active = True
 
                     axis2 = joy.get_axis(2)
-                    if abs(axis3) > config.JOYSTICK_DEADZONE
+                    if abs(axis3) > config.JOYSTICK_DEADZONE:
                         steering = joy.get_axis(2)
 
                     axis2 = joy.get_axis(3)
