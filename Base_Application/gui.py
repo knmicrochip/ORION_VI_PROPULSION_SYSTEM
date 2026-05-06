@@ -551,8 +551,7 @@ class DashboardGUI:
 
         for i, joy in enumerate(joysticks):
             joy_name = joy.get_name()[:15]
-            joy_guid = joy.get_guid()[:15]
-            tk.Label(self.key_guide_container, text=f"Joy {i}: {joy_name} - {joy_guid}", bg=config.BG_COLOR, fg="white").pack(anchor="w")
+            tk.Label(self.key_guide_container, text=f"Joy {i}: {joy_name}", bg=config.BG_COLOR, fg="white").pack(anchor="w")
 
 
     def reset_trip(self, ids: list[str]):
