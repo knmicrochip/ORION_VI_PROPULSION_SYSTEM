@@ -52,8 +52,9 @@ class InputManager:
                 for i in range(joy.get_numaxes()):
                     val = joy.get_axis(i)
                     print(f"Axis {i}: {val:.3f}")
+                    # print(joy.get_guid())
                 if joy.get_guid() == config.LOGITECH_GUID:
-                    # print("logitech", flush=True)
+                    print("logitech", flush=True)
                     # Limit prędkości (Axis 3 - suwak/przepustnica)
                     if joy.get_numaxes() > 3:
                         axis3 = joy.get_axis(3)
@@ -64,14 +65,16 @@ class InputManager:
 
                     # Gaz (Axis 1 - lewa gałka pionowo)
                     axis1 = -joy.get_axis(1)
-                    if abs(axis1) > config.JOYSTICK_DEADZONE:
+                    if abs(axis1) > config.LOGITECH_DEADZONE:
                         joy_throttle = axis1 * app_state.current_speed_limit
                         joy_active = True
                     
-                    # Skręt (Axis 5 lub 2)
-                    if joy.get_numaxes() > config.STEERING_AXIS_INDEX:
-                        steering = joy.get_axis(config.STEERING_AXIS_INDEX)
-                    elif joy.get_numaxes() > 2:
+                    # # Skręt (Axis 5 lub 2)
+                    # if joy.get_numaxes() > config.STEERING_AXIS_INDEX:
+                    #     steering = joy.get_axis(config.STEERING_AXIS_INDEX)
+                    # elif joy.get_numaxes() > 2:
+                    axis2 = joy.get_axis(2)
+                    if abs(axis2) > config.JOYSTICK_DEADZONE:
                         steering = joy.get_axis(2)
                 else:
                     # print("xbox", flush=True)
@@ -88,6 +91,17 @@ class InputManager:
                     if abs(axis3) > config.JOYSTICK_DEADZONE:
                         sidle = axis3 # how much should you translate sideways
 
+                    if joy.get_button(5):
+                        if (app_state.current_speed_limit + config.ABSOLUTE_MAX_LIMIT * 0.01) < config.ABSOLUTE_MAX_LIMIT:
+                            app_state.current_speed_limit = (app_state.current_speed_limit + config.ABSOLUTE_MAX_LIMIT * 0.01)
+                        else: 
+                            app_state.current_speed_limit = config.ABSOLUTE_MAX_LIMIT
+
+                    if joy.get_button(4):
+                        if (app_state.current_speed_limit - config.ABSOLUTE_MAX_LIMIT * 0.01) > 0:
+                            app_state.current_speed_limit = (app_state.current_speed_limit - config.ABSOLUTE_MAX_LIMIT * 0.01)
+                        else: 
+                            app_state.current_speed_limit = 0
 
 
 
