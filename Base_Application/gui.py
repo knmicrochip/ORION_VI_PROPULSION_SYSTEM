@@ -536,7 +536,11 @@ class DashboardGUI:
                     bg=config.BG_COLOR, fg="white",
                     font=("Arial", 10, "bold")).pack()
 
-            tk.Label(instr, text="LB RB - zmień maksymalną prędkość",
+            tk.Label(instr, text="Prawa gałka: przesuń w prawo",
+                    bg=config.BG_COLOR, fg="white",
+                    font=("Arial", 10, "bold")).pack()
+
+            tk.Label(instr, text="LB/3 RB/4 - zmień maksymalną prędkość",
                     bg=config.BG_COLOR, fg="white",
                     font=("Arial", 10, "bold")).pack()
 

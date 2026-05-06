@@ -43,32 +43,49 @@ class InputManager:
         joy_throttle = 0.0
         joy_active = False
         steering = 0.0
+        sidle = 0.0
         
         # Obsługa Joysticka
         if self.joysticks:
             try:
                 joy = self.joysticks[0]
-                
-                # Limit prędkości (Axis 3 - suwak/przepustnica)
-                if joy.get_numaxes() > 3:
-                    axis3 = joy.get_axis(3)
-                    # Mapowanie -1..1 na 0..MAX
-                    app_state.current_speed_limit = ((1.0 - axis3) / 2.0) * config.ABSOLUTE_MAX_LIMIT
-                else:
-                    app_state.current_speed_limit = self.key_max_limit
+                if joy.get_guid() == config.LOGITECH_GUID:
 
-                # Gaz (Axis 1 - lewa gałka pionowo)
-                axis1 = -joy.get_axis(1)
-                if abs(axis1) > config.JOYSTICK_DEADZONE:
-                    joy_throttle = axis1 * app_state.current_speed_limit
-                    joy_active = True
-                
-                # Skręt (Axis 5 lub 2)
-                if joy.get_numaxes() > config.STEERING_AXIS_INDEX:
-                    steering = joy.get_axis(config.STEERING_AXIS_INDEX)
-                elif joy.get_numaxes() > 2:
-                    steering = joy.get_axis(2)
+                    # Limit prędkości (Axis 3 - suwak/przepustnica)
+                    if joy.get_numaxes() > 3:
+                        axis3 = joy.get_axis(3)
+                        # Mapowanie -1..1 na 0..MAX
+                        app_state.current_speed_limit = ((1.0 - axis3) / 2.0) * config.ABSOLUTE_MAX_LIMIT
+                    else:
+                        app_state.current_speed_limit = self.key_max_limit
+
+                    # Gaz (Axis 1 - lewa gałka pionowo)
+                    axis1 = -joy.get_axis(1)
+                    if abs(axis1) > config.JOYSTICK_DEADZONE:
+                        joy_throttle = axis1 * app_state.current_speed_limit
+                        joy_active = True
                     
+                    # Skręt (Axis 5 lub 2)
+                    if joy.get_numaxes() > config.STEERING_AXIS_INDEX:
+                        steering = joy.get_axis(config.STEERING_AXIS_INDEX)
+                    elif joy.get_numaxes() > 2:
+                        steering = joy.get_axis(2)
+                else:
+                    axis1 = -joy.get_axis(1)
+                    if abs(axis1) > config.JOYSTICK_DEADZONE:
+                        joy_throttle = axis1 * app_state.current_speed_limit
+                        joy_active = True
+
+                    axis2 = joy.get_axis(2)
+                    if abs(axis3) > config.JOYSTICK_DEADZONE
+                        steering = joy.get_axis(2)
+
+                    axis2 = joy.get_axis(3)
+                    if abs(axis3) > config.JOYSTICK_DEADZONE:
+                        sidle = axis3 # how much should you translate sideways
+
+
+
             except Exception:
                 pass
         else:
