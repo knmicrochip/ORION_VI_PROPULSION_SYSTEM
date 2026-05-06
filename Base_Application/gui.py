@@ -155,7 +155,7 @@ class DashboardGUI:
         self.main_frame.pack(fill="both", expand=True)
 
         # Configure 3 responsive columns
-        # wiights are fucking magic
+        # weights are fucking magic
         self.main_frame.columnconfigure(0, weight=30)   # center
         self.main_frame.columnconfigure(1, weight=40)   # left? for some reason XD
         self.main_frame.columnconfigure(2, weight=50)   # right
@@ -178,39 +178,78 @@ class DashboardGUI:
         self._build_center_panel()
         self._build_right_panel()
 
-    def _build_left_panel(self):
+    # def _build_left_panel(self):
         # Joysticki
-        self.joy_container = tk.Frame(self.left_frame, bg=config.BG_COLOR)
-        self.joy_container.pack(side="top", fill="x")
-        self.joystick_list_frame = tk.Frame(self.joy_container, bg=config.BG_COLOR)
+        # self.joy_container = tk.Frame(self.left_frame, bg=config.BG_COLOR)
+        # self.joy_container.pack(side="top", fill="x")
+        # self.joystick_list_frame = tk.Frame(self.joy_container, bg=config.BG_COLOR)
         
-        tk.Button(self.joy_container, text="⟳ RESET JOYSTICK", command=self.refresh_joysticks, 
-                  bg=config.BTN_RESET_COLOR, fg="white", font=("Arial", 10, "bold")).pack(fill="x", pady=(0,10))
-        self.joystick_list_frame.pack(fill="both", expand=True)
 
-        # Instrukcja
-        instr = tk.LabelFrame(self.left_frame, text="Klawiatura", bg=config.BG_COLOR, fg="#ccc")
-        instr.pack(fill="x", pady=10)
-        tk.Label(instr, text="[W]/[S] - Przód/Tył | [R]/[F] - Limit", bg=config.BG_COLOR, fg="white", font=("Arial", 10, "bold")).pack()
-        tk.Label(instr, text="[ESC] - Zamknij fullscreen", bg=config.BG_COLOR, fg="#888").pack()
+        # tk.Button(self.joy_container, text="Quit!", command=self.Close, 
+        #           bg=config.BTN_RESET_COLOR, fg="white", font=("Arial", 10, "bold")).pack(fill="x", pady=(0,10))
 
-        # Wykres
-        self.plot_frame = tk.LabelFrame(self.left_frame, text="Wykres Prędkości", bg=config.BG_COLOR, fg=config.FG_COLOR)
-        self.plot_frame.pack(side="bottom", fill="both", expand=True, pady=(20, 0))
+        # tk.Button(self.joy_container, text="⟳ RESET JOYSTICK", command=self.refresh_joysticks, 
+        #           bg=config.BTN_RESET_COLOR, fg="white", font=("Arial", 10, "bold")).pack(fill="x", pady=(0,10))
+        # self.joystick_list_frame.pack(fill="both", expand=True)
+
+    def _build_left_panel(self):
+        # Ustawiamy grid w left_frame
+        self.left_frame.columnconfigure(0, weight=1)
+        self.left_frame.columnconfigure(1, weight=3)
+        self.left_frame.rowconfigure(0, weight = 1)
+        self.left_frame.rowconfigure(1, weight = 1)
+        self.left_frame.rowconfigure(2, weight = 100)
+
+
+        quit_button_container = tk.Frame(self.left_frame, bg=config.BG_COLOR)
+        quit_button_container.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+
+        tk.Button(quit_button_container, text="Quit!", command=self.Close,
+                bg=config.BTN_RESET_COLOR, fg="white",
+                font=("Arial", 10, "bold")).pack(fill="x", pady=(0, 10))
+
+        reset_joystick_container = tk.Frame(self.left_frame, bg=config.BG_COLOR)
+        reset_joystick_container.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+
+        tk.Button(reset_joystick_container, text="⟳ RESET JOYSTICK", command=self.refresh_joysticks,
+                bg=config.BTN_RESET_COLOR, fg="white",
+                font=("Arial", 10, "bold")).pack(fill="x", pady=(0, 10))
+
+        self.key_guide_container = tk.Frame(self.left_frame, bg=config.BG_COLOR)
+        self.key_guide_container.grid(row=1,column=0,columnspan=2, sticky="nsew", padx=5, pady=5)
+
+        # self.joy_container = tk.Frame(self.key_guide_container, bg=config.BG_COLOR)
+        # self.joy_container.pack(fill="both", expand=True)
+
+        # self.joystick_list_frame = tk.Frame(self.joy_container, bg=config.BG_COLOR)
+        # self.joystick_list_frame.grid(row=1,column=0,columnspan=2, sticky="nsew", padx=5, pady=5)
+
+
+
+
+        # # Instrukcja
+        # instr = tk.LabelFrame(self.left_frame, text="Klawiatura", bg=config.BG_COLOR, fg="#ccc")
+        # instr.pack(fill="x", pady=10)
+        # tk.Label(instr, text="[W]/[S] - Przód/Tył | [R]/[F] - Limit", bg=config.BG_COLOR, fg="white", font=("Arial", 10, "bold")).pack()
+        # tk.Label(instr, text="[ESC] - Zamknij fullscreen", bg=config.BG_COLOR, fg="#888").pack()
+
+        # # Wykres
+        # self.plot_frame = tk.LabelFrame(self.left_frame, text="Wykres Prędkości", bg=config.BG_COLOR, fg=config.FG_COLOR)
+        # self.plot_frame.pack(side="bottom", fill="both", expand=True, pady=(20, 0))
         
-        self.fig = Figure(figsize=(4, 3), dpi=100, facecolor=config.BG_COLOR)
-        self.ax = self.fig.add_subplot(111)
-        self.ax.set_facecolor(config.BG_COLOR)
-        self.ax.tick_params(colors='white')
-        for spine in self.ax.spines.values(): spine.set_color('white')
-        self.ax.grid(True, color='#444', linestyle='--')
+        # self.fig = Figure(figsize=(4, 3), dpi=100, facecolor=config.BG_COLOR)
+        # self.ax = self.fig.add_subplot(111)
+        # self.ax.set_facecolor(config.BG_COLOR)
+        # self.ax.tick_params(colors='white')
+        # for spine in self.ax.spines.values(): spine.set_color('white')
+        # self.ax.grid(True, color='#444', linestyle='--')
         
-        self.line_target, = self.ax.plot([], [], color='#00ffff', label='Target', linestyle='--')
-        self.line_meas, = self.ax.plot([], [], color='#00ff00', label='Measured')
-        self.ax.legend(loc="upper right", facecolor=config.BG_COLOR, labelcolor='white', framealpha=0.5)
+        # self.line_target, = self.ax.plot([], [], color='#00ffff', label='Target', linestyle='--')
+        # self.line_meas, = self.ax.plot([], [], color='#00ff00', label='Measured')
+        # self.ax.legend(loc="upper right", facecolor=config.BG_COLOR, labelcolor='white', framealpha=0.5)
         
-        self.canvas_plot = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
-        self.canvas_plot.get_tk_widget().pack(fill="both", expand=True)
+        # self.canvas_plot = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
+        # self.canvas_plot.get_tk_widget().pack(fill="both", expand=True)
 
     def _build_center_panel(self):
         # Gauge (Zegary)
@@ -465,13 +504,50 @@ class DashboardGUI:
 
     def refresh_joysticks(self):
         joysticks = self.input_manager.scan_joysticks()
-        for widget in self.joystick_list_frame.winfo_children():
+
+        # clear labels
+        # for widget in self.joystick_list_frame.winfo_children():
+        #     widget.destroy()
+        for widget in self.key_guide_container.winfo_children():
             widget.destroy()
+
         if not joysticks:
-            tk.Label(self.joystick_list_frame, text="BRAK JOYSTICKA (Użyj Klawiatury)", bg=config.BG_COLOR, fg="yellow").pack()
+            tk.Label(self.key_guide_container, text="BRAK JOYSTICKA (Użyj Klawiatury)", bg=config.BG_COLOR, fg="yellow").pack()
+
+                    # Instrukcja
+            instr = tk.LabelFrame(self.key_guide_container, text="Klawiatura",
+                    bg=config.BG_COLOR, fg="#ccc")
+
+            instr.pack(fill="x", pady=10)
+
+            tk.Label(instr, text="[W]/[S] - Przód/Tył | [R]/[F] - Limit",
+                    bg=config.BG_COLOR, fg="white",
+                    font=("Arial", 10, "bold")).pack()
+
+            tk.Label(instr, text="[ESC] - Zamknij fullscreen",
+                    bg=config.BG_COLOR, fg="#888").pack()
+        
+        else:
+            instr = tk.LabelFrame(self.key_guide_container, text="Joystick",
+                    bg=config.BG_COLOR, fg="#ccc")
+            instr.pack(fill="x", pady=10)
+
+            tk.Label(instr, text="Lewa gałka: przód/tył + skręty",
+                    bg=config.BG_COLOR, fg="white",
+                    font=("Arial", 10, "bold")).pack()
+
+            tk.Label(instr, text="LB RB - zmień maksymalną prędkość",
+                    bg=config.BG_COLOR, fg="white",
+                    font=("Arial", 10, "bold")).pack()
+
+            tk.Label(instr, text="[ESC] - Zamknij fullscreen",
+                    bg=config.BG_COLOR, fg="#888").pack()
+
+
         for i, joy in enumerate(joysticks):
             joy_name = joy.get_name()[:15]
-            tk.Label(self.joystick_list_frame, text=f"Joy {i}: {joy_name}", bg=config.BG_COLOR, fg="white").pack(anchor="w")
+            tk.Label(self.key_guide_container, text=f"Joy {i}: {joy_name}", bg=config.BG_COLOR, fg="white").pack(anchor="w")
+
 
     def reset_trip(self, ids: list[str]):
         for id in ids:
@@ -633,3 +709,8 @@ class DashboardGUI:
         self.gauge_canvas.create_arc(cx-r, cy-r, cx+r, cy+r, start=90, extent=-draw_angle, style="arc", outline=color, width=25)
         self.gauge_canvas.create_text(cx, cy-20, text=f"{val:.1f}", fill="white", font=("Arial", 36, "bold"))
         self.gauge_canvas.create_text(cx, cy+25, text=f"Max Limit: {self.state.current_speed_limit:.1f} RPS", fill="#888", font=("Arial", 12))
+
+    def Close(self):
+        self.root.destroy()
+        exit(0)
+         #random bulshit GO!
