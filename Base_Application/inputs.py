@@ -49,8 +49,11 @@ class InputManager:
         if self.joysticks:
             try:
                 joy = self.joysticks[0]
+                for i in range(joy.get_numaxes()):
+                    val = joy.get_axis(i)
+                    print(f"Axis {i}: {val:.3f}")
                 if joy.get_guid() == config.LOGITECH_GUID:
-
+                    # print("logitech", flush=True)
                     # Limit prędkości (Axis 3 - suwak/przepustnica)
                     if joy.get_numaxes() > 3:
                         axis3 = joy.get_axis(3)
@@ -71,18 +74,20 @@ class InputManager:
                     elif joy.get_numaxes() > 2:
                         steering = joy.get_axis(2)
                 else:
+                    # print("xbox", flush=True)
                     axis1 = -joy.get_axis(1)
                     if abs(axis1) > config.JOYSTICK_DEADZONE:
                         joy_throttle = axis1 * app_state.current_speed_limit
                         joy_active = True
 
-                    axis2 = joy.get_axis(2)
-                    if abs(axis3) > config.JOYSTICK_DEADZONE:
-                        steering = joy.get_axis(2)
+                    axis2 = joy.get_axis(0) #WTF! WHY 0!
+                    if abs(axis2) > config.JOYSTICK_DEADZONE:
+                        steering = axis2
 
-                    axis2 = joy.get_axis(3)
+                    axis3 = joy.get_axis(5)
                     if abs(axis3) > config.JOYSTICK_DEADZONE:
                         sidle = axis3 # how much should you translate sideways
+
 
 
 
