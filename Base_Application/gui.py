@@ -136,19 +136,43 @@ class DashboardGUI:
     def setup_ui(self):
         self.root.configure(bg=config.BG_COLOR)
         # Layout Frames
+        # self.main_frame = tk.Frame(self.root, bg=config.BG_COLOR)
+        # self.main_frame.pack(fill="both", expand=True)
+
+        # self.left_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR, width=500)
+        # self.left_frame.pack(side="left", fill="y", padx=10, pady=10)
+        # self.left_frame.pack_propagate(False)
+
+        # self.center_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR)
+        # self.center_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+        # self.right_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR, width=400)
+        # self.right_frame.pack(side="left", fill="y", padx=10, pady=10)
+        # self.right_frame.pack_propagate(False)
+
+            # Main container
         self.main_frame = tk.Frame(self.root, bg=config.BG_COLOR)
         self.main_frame.pack(fill="both", expand=True)
 
-        self.left_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR, width=500)
-        self.left_frame.pack(side="left", fill="y", padx=10, pady=10)
-        self.left_frame.pack_propagate(False)
+        # Configure 3 responsive columns
+        # wiights are fucking magic
+        self.main_frame.columnconfigure(0, weight=30)   # center
+        self.main_frame.columnconfigure(1, weight=40)   # left? for some reason XD
+        self.main_frame.columnconfigure(2, weight=50)   # right
 
+        self.main_frame.rowconfigure(0, weight=1)
+
+        # Left panel
+        self.left_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR)
+        self.left_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
+        # Center panel
         self.center_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR)
-        self.center_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        self.center_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
-        self.right_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR, width=400)
-        self.right_frame.pack(side="left", fill="y", padx=10, pady=10)
-        self.right_frame.pack_propagate(False)
+        # Right panel
+        self.right_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR)
+        self.right_frame.grid(row=0, column=2, sticky="nsew", padx=10, pady=10)
 
         self._build_left_panel()
         self._build_center_panel()
