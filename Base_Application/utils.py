@@ -59,6 +59,11 @@ class AppState:
         self.steering_val = 0.0
         self.current_speed_limit = 10.0
         
+        # --- NOWE ZMIENNE DLA TRYBÓW JAZDY ---
+        self.drive_mode = 1           # 1: Normalny, 2: Obrót w miejscu
+        self.mode_switch_time = 0.0   # Czas ostatniej zmiany trybu (do opóźnienia)
+        # ------------------------------------
+        
         # Statusy
         self.mqtt_connected = False
         self.mqtt_status_text = "MQTT: Rozłączono"

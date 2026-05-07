@@ -5,6 +5,7 @@ import time
 from collections import deque
 import subprocess
 import platform
+import math 
 
 # Matplotlib
 import matplotlib
@@ -51,6 +52,50 @@ class DashboardGUI:
             return response == 0
         except Exception:
             return False
+    def _draw_rover_top_view(self):
+        """Rysuje widok z góry w lewym panelu"""
+        self.rover_canvas.delete("all")
+        
+        # Pobieranie wymiarów
+        canvas_w = self.rover_canvas.winfo_width()
+        canvas_h = self.rover_canvas.winfo_height()
+        if canvas_w < 10: canvas_w, canvas_h = 480, 250 # Fallback
+            
+        cx, cy = canvas_w / 2, canvas_h / 2
+        
+        # Pobranie danych ze stanu aplikacji
+        mode = getattr(self.state, 'drive_mode', 1)
+        s = self.state.steering_val
+        
+        # Obliczanie kątów (identycznie jak w sterowaniu ESP32)
+        if mode == 1:
+            fl, fr, rl, rr = s, s, -s, -s
+        else: # Tryb 2: Obrót (X-turn)
+            angle = 0.8
+            fl, fr, rl, rr = angle, -angle, angle, angle
+            
+        # Rysowanie korpusu
+        self.rover_canvas.create_rectangle(cx-40, cy-70, cx+40, cy+70, fill="#222", outline="#444")
+        
+        # Rysowanie kół (funkcja pomocnicza do obrotu)
+        def draw_wheel(x, y, rad_angle, color):
+            w, h = 20, 45
+            points = [(-w/2, -h/2), (w/2, -h/2), (w/2, h/2), (-w/2, h/2)]
+            rotated = []
+            for px, py in points:
+                # Rotacja 2D
+                rx = x + (px * math.cos(rad_angle) - py * math.sin(-rad_angle))
+                ry = y + (px * math.sin(-rad_angle) + py * math.cos(rad_angle))
+                rotated.extend([rx, ry])
+            self.rover_canvas.create_polygon(rotated, fill=color, outline="white")
+
+        wheel_color = "#00ff00" if mode == 1 else "#FFAA00"
+        
+        # Rozstaw kół na rysunku
+        draw_wheel(cx-60, cy-50, fl, wheel_color) # FL
+        draw_wheel(cx+60, cy-50, fr, wheel_color) # FR
+        draw_wheel(cx-60, cy+50, rl, wheel_color) # RL
+        draw_wheel(cx+60, cy+50, rr, wheel_color) # RR
 
     def _check_connection(self, host, port=None):
         """
@@ -170,23 +215,16 @@ class DashboardGUI:
         tk.Label(instr, text="[W]/[S] - Przód/Tył | [R]/[F] - Limit", bg=config.BG_COLOR, fg="white", font=("Arial", 10, "bold")).pack()
         tk.Label(instr, text="[ESC] - Zamknij fullscreen", bg=config.BG_COLOR, fg="#888").pack()
 
-        # Wykres
-        self.plot_frame = tk.LabelFrame(self.left_frame, text="Wykres Prędkości", bg=config.BG_COLOR, fg=config.FG_COLOR)
-        self.plot_frame.pack(side="bottom", fill="both", expand=True, pady=(20, 0))
-        
-        self.fig = Figure(figsize=(4, 3), dpi=100, facecolor=config.BG_COLOR)
-        self.ax = self.fig.add_subplot(111)
-        self.ax.set_facecolor(config.BG_COLOR)
-        self.ax.tick_params(colors='white')
-        for spine in self.ax.spines.values(): spine.set_color('white')
-        self.ax.grid(True, color='#444', linestyle='--')
-        
-        self.line_target, = self.ax.plot([], [], color='#00ffff', label='Target', linestyle='--')
-        self.line_meas, = self.ax.plot([], [], color='#00ff00', label='Measured')
-        self.ax.legend(loc="upper right", facecolor=config.BG_COLOR, labelcolor='white', framealpha=0.5)
-        
-        self.canvas_plot = FigureCanvasTkAgg(self.fig, master=self.plot_frame)
-        self.canvas_plot.get_tk_widget().pack(fill="both", expand=True)
+                # --- NOWA SEKCJA: WIZUALIZACJA PODWOZIA (Lewy dolny panel) ---
+        self.preview_frame = tk.LabelFrame(self.left_frame, text="Podgląd Skrętu Kół", 
+                                           bg=config.BG_COLOR, fg=config.FG_COLOR)
+        # Umieszczamy nad wykresem lub jako główny element dolny
+        self.preview_frame.pack(side="top", fill="both", expand=True, pady=10)
+
+        self.rover_canvas = tk.Canvas(self.preview_frame, bg="#111111", 
+                                      highlightthickness=0, height=250)
+        self.rover_canvas.pack(fill="both", expand=True)
+        # -------------------------------------------------------------
 
     def _build_center_panel(self):
         # Gauge (Zegary)
@@ -374,6 +412,11 @@ class DashboardGUI:
                                       bg=config.BG_COLOR, fg=config.FG_COLOR, font=("Arial", 10))
         self.lbl_mqtt_status.pack(anchor="w")
 
+        # --- NOWA ETYKIETA: TRYB JAZDY ---
+        self.lbl_drive_mode = tk.Label(status_col, text="TRYB: NORMALNY", 
+                                       bg=config.BG_COLOR, fg="#00FF00", font=("Arial", 12, "bold"))
+        self.lbl_drive_mode.pack(anchor="w", pady=(5, 0))
+
         # 2. Prawa strona nagłówka: Diody PING + Przycisk Reconnect
         controls_col = tk.Frame(header_frame, bg=config.BG_COLOR)
         controls_col.pack(side="right")
@@ -504,7 +547,13 @@ class DashboardGUI:
         self.lbl_target.config(text=f"Target: {self.state.target_rps:.2f} RPS")
         self.lbl_steering.config(text=f"Steering: {self.state.steering_val:.2f}")
         self.lbl_mqtt_status.config(text=self.state.mqtt_status_text)
-
+        # --- AKTUALIZACJA TRYBU JAZDY ---
+        mode = getattr(self.state, 'drive_mode', 1) # Pobranie trybu z utils.AppState
+        if mode == 1:
+            self.lbl_drive_mode.config(text="TRYB: NORMALNY", fg="#00FF00") # Zielony
+        elif mode == 2:
+            self.lbl_drive_mode.config(text="TRYB: OBRÓT W MIEJSCU", fg="#FFAA00") # Pomarańczowy
+        # --------------------------------
         for odrive_id, odrv in self.state.o_drives.items():
             widgets = self.odrive_widgets.get(odrive_id)
             if not widgets:
@@ -520,7 +569,7 @@ class DashboardGUI:
             
             # --- AKTUALIZACJA SERWO ---
             # Obliczenie kąta w stopniach. Twój docelowy zakres w ESP32 to 1.0 radian (ok 57.3 st.)
-            angle_deg = self.state.steering_val * 57.2958
+            angle_deg = self.state.steering_val * 45
             
             widgets["lbl_servo_current"].config(text=f"{odrv.servo_current:.2f} A")
             widgets["lbl_servo_angle"].config(text=f"{angle_deg:.1f}°")
@@ -575,26 +624,9 @@ class DashboardGUI:
         # Draw Gauge
         self._draw_gauge(self.state.target_rps)
 
-        # Update Plot Data
-        ct = time.time() - self.start_time
-        self.plot_data_x.append(ct)
-        self.plot_data_target.append(self.state.target_rps)
-        # Mean value is taken for the plot
-        #self.plot_data_meas.append(sum(item.measured_velocity for item in self.state.o_drives.values()) / len(self.state.o_drives))
-        
-        self.plot_data_meas.append(self.state.o_drives["00"].measured_velocity)
-
-        if self.plot_counter % config.PLOT_SKIP_FRAMES == 0 and len(self.plot_data_x) > 1:
-            # Rzutowanie deque na list() rozwiązuje problem z linterem i stabilnością
-            self.line_target.set_data(list(self.plot_data_x), list(self.plot_data_target))
-            self.line_meas.set_data(list(self.plot_data_x), list(self.plot_data_meas))
+        if hasattr(self, 'rover_canvas'):
+            self._draw_rover_top_view()
             
-            self.ax.set_xlim(min(self.plot_data_x), max(self.plot_data_x) + 0.1)
-            limit = config.ABSOLUTE_MAX_LIMIT * 1.1
-            self.ax.set_ylim(-limit, limit)
-            self.canvas_plot.draw_idle()
-        self.plot_counter += 1
-
     def _draw_gauge(self, val):
         self.gauge_canvas.delete("all")
         cx, cy, r = 200, 150, 130

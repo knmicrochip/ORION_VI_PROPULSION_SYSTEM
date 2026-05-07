@@ -1,6 +1,8 @@
 # inputs.py
 import pygame
 import config
+import time
+
 
 class InputManager:
     def __init__(self):
@@ -12,6 +14,7 @@ class InputManager:
         # Zmienne klawiatury
         self.key_throttle = 0.0
         self.key_max_limit = 10.0
+        self.btn_mode_last = False #
 
     def scan_joysticks(self):
         self.joysticks = []
@@ -48,6 +51,28 @@ class InputManager:
         if self.joysticks:
             try:
                 joy = self.joysticks[0]
+                
+                # --- NOWY KOD: PRZEŁĄCZANIE TRYBÓW PRZYCISKIEM ---
+                if joy.get_numbuttons() > 1:
+                    btn_mode = joy.get_button(1) # Przycisk 0 (zwykle A/Krzyżyk)
+                    
+                    if btn_mode and not self.btn_mode_last: # Wykrycie pojedynczego kliknięcia
+                        
+                        # ZABEZPIECZENIE: Sprawdzamy, czy zadana prędkość z joysticka jest bliska 0
+                        if abs(app_state.target_rps) < 0.1:
+                            if app_state.drive_mode == 1:
+                                app_state.drive_mode = 2
+                                app_state.mode_switch_time = time.time()
+                                app_state.log(">>> TRYB JAZDY: OBRÓT W MIEJSCU (Czekaj na serwa) <<<")
+                            else:
+                                app_state.drive_mode = 1
+                                app_state.mode_switch_time = time.time()
+                                app_state.log(">>> TRYB JAZDY: NORMALNY <<<")
+                        else:
+                            # Odrzucenie polecenia, gdy łazik jest w ruchu
+                            app_state.log("!!! ODMOWA ZMIANY TRYBU: Najpierw zatrzymaj łazika !!!")
+                            
+                    self.btn_mode_last = btn_mode
                 
                 # Limit prędkości (Axis 3 - suwak/przepustnica)
                 if joy.get_numaxes() > 3:

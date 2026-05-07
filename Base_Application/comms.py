@@ -100,31 +100,67 @@ class MqttManager:
             pass
 
     def send_drive_command(self):
-        """Wysyła ramkę sterującą JSON (velocity + steering) w formacie zgodnym z nowym ESP32"""
+        """Wysyła ramkę sterującą JSON zależnie od wybranego trybu jazdy"""
         if self.client and self.state.mqtt_connected:
             v = round(self.state.target_rps, 3)
             s = round(self.state.steering_val, 3)
+            s = 0.0 if abs(s) < 0.25 else s
             
-            # Nowa architektura: eventType + zgrupowane prędkości i skręty wewnątrz "velocity"
-            payload = {
-                "eventType": "propulsion",
-                "velocity": {
-                    "fl_speed": v,
-                    "rl_speed": v,
-                    "fr_speed": v,
-                    "rr_speed": v,
-                    "fl_rad": s,
-                    "rl_rad": s,
-                    "fr_rad": s,
-                    "rr_rad": s
+            # 1. Deklaracja pustej zmiennej - to usuwa czerwone podkreślenie!
+            payload = None 
+                         
+            # ===================================================
+            # TRYB 1: JAZDA NORMALNA
+            # ===================================================
+            if getattr(self.state, 'drive_mode', 1) == 1:
+                payload = {
+                    "eventType": "propulsion",
+                    "velocity": {
+                        "fl_speed": -v,
+                        "rl_speed": v,
+                        "fr_speed": -v,
+                        "rr_speed": -v,
+                        "fl_rad": s,
+                        "rl_rad": -s,
+                        "fr_rad": s,
+                        "rr_rad": -s
+                    }
                 }
-            }
+
+            # ===================================================
+            # TRYB 2: OBRÓT W MIEJSCU
+            # ===================================================
+            elif self.state.drive_mode == 2:
+                TURN_ANGLE = 1.0 
+                v_rot = s * self.state.current_speed_limit 
+
+                if time.time() - self.state.mode_switch_time < 1.5:
+                    v_rot = 0.0
+
+                payload = {
+                    "eventType": "propulsion",
+                    "velocity": {
+                        "fl_speed": -v_rot,
+                        "rl_speed": v_rot,
+                        "fr_speed": v_rot,  
+                        "rr_speed": v_rot,  
+                        "fl_rad": TURN_ANGLE,       
+                        "fr_rad": -TURN_ANGLE,      
+                        "rl_rad": -TURN_ANGLE,       
+                        "rr_rad": TURN_ANGLE        
+                    }
+                }
+
+            # 2. Zabezpieczenie: jeśli payload jest puste, nie wysyłaj
+            if payload is None:
+                return
+
+            # --- PUBLIKACJA WYGENEROWANEGO PAYLOADU ---
             try:
                 payload_json = json.dumps(payload)
-                # Używamy teraz głównego TOPIC_CMD zgodnie z config.h ESP32
-                self.client.publish(config.TOPIC_CMD, payload_json) 
-                
+                self.client.publish(config.TOPIC_CMD, payload_json)
                 self.state.latency_estimator.push_target(self.state.target_rps)
+                
             except Exception as e:
                 self.state.log(f"Błąd wysyłania: {e}")
             
