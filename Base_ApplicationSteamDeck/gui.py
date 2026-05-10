@@ -6,6 +6,9 @@ from collections import deque
 import subprocess
 import platform
 import math 
+import pygame
+import os
+import subprocess
 
 # Matplotlib
 import matplotlib
@@ -24,10 +27,19 @@ from utils import AppState
 class DashboardGUI:
     def __init__(self, root, app_state, input_manager, mqtt_manager):
         self.root = root
-        self.state : AppState = app_state
-        self.input_manager : InputManager = input_manager
-        self.mqtt_manager : MqttManager = mqtt_manager
+        self.state = app_state
+        self.input_manager = input_manager
+        self.mqtt_manager = mqtt_manager
         
+        self.has_alarm = False
+        import os
+        if os.path.exists("alarm.wav"):
+            self.has_alarm = True
+            print("[Audio] Znaleziono plik alarm.wav. Będzie odtwarzany przez system SteamOS.")
+        else:
+            print("[Audio] Brak pliku alarm.wav. Alarm wyłączony.")
+        # ----------------------------------------
+        # ----------------------------------------
         # Dane do wykresu
         self.plot_data_x = deque(maxlen=200)
         self.plot_data_target = deque(maxlen=200)
@@ -184,14 +196,14 @@ class DashboardGUI:
         self.main_frame = tk.Frame(self.root, bg=config.BG_COLOR)
         self.main_frame.pack(fill="both", expand=True)
 
-        self.left_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR, width=500)
+        self.left_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR, width=250)
         self.left_frame.pack(side="left", fill="y", padx=10, pady=10)
         self.left_frame.pack_propagate(False)
 
         self.center_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR)
         self.center_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
-        self.right_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR, width=400)
+        self.right_frame = tk.Frame(self.main_frame, bg=config.BG_COLOR, width=250)
         self.right_frame.pack(side="left", fill="y", padx=10, pady=10)
         self.right_frame.pack_propagate(False)
 
@@ -215,87 +227,83 @@ class DashboardGUI:
         tk.Label(instr, text="[W]/[S] - Przód/Tył | [R]/[F] - Limit", bg=config.BG_COLOR, fg="white", font=("Arial", 10, "bold")).pack()
         tk.Label(instr, text="[ESC] - Zamknij fullscreen", bg=config.BG_COLOR, fg="#888").pack()
 
-                # --- NOWA SEKCJA: WIZUALIZACJA PODWOZIA (Lewy dolny panel) ---
+        # --- NOWA SEKCJA: WIZUALIZACJA PODWOZIA (Lewy dolny panel) ---
         self.preview_frame = tk.LabelFrame(self.left_frame, text="Podgląd Skrętu Kół", 
                                            bg=config.BG_COLOR, fg=config.FG_COLOR)
-        # Umieszczamy nad wykresem lub jako główny element dolny
         self.preview_frame.pack(side="top", fill="both", expand=True, pady=10)
 
+        # ZMIANA: Wysokość canvasu podglądu z 250 na 160
         self.rover_canvas = tk.Canvas(self.preview_frame, bg="#111111", 
-                                      highlightthickness=0, height=250)
+                                      highlightthickness=0, height=160)
         self.rover_canvas.pack(fill="both", expand=True)
-        # -------------------------------------------------------------
 
     def _build_center_panel(self):
         # Gauge (Zegary)
         gauge_frame = tk.LabelFrame(self.center_frame, text="Wskaźniki", bg=config.BG_COLOR, fg=config.FG_COLOR)
         gauge_frame.pack(pady=10, fill="both")
-        self.gauge_canvas = tk.Canvas(gauge_frame, width=400, height=300, bg=config.BG_COLOR, highlightthickness=0)
-        self.gauge_canvas.pack(pady=10)
         
-        self.lbl_target = tk.Label(gauge_frame, text="Target: 0.0 RPS", bg=config.BG_COLOR, fg="white", font=("Arial", 24, "bold"))
-        self.lbl_target.pack()
-        self.lbl_steering = tk.Label(gauge_frame, text="Steering: 0.00", bg=config.BG_COLOR, fg="#FFAA00", font=("Arial", 16))
-        self.lbl_steering.pack(pady=(0, 10))
-
+        # --- ZMIANA: Tworzymy poziomy kontener na Canvas i Labele obok siebie ---
+        inner_gauge_frame = tk.Frame(gauge_frame, bg=config.BG_COLOR)
+        inner_gauge_frame.pack(fill="x", pady=5)
+        
+        # Canvas przypięty do lewej strony
+        # Zmniejszono szerokość na 220, ponieważ Twój półokrąg ma środek cx=100 i promień r=95
+        self.gauge_canvas = tk.Canvas(inner_gauge_frame, width=220, height=140, bg=config.BG_COLOR, highlightthickness=0)
+        self.gauge_canvas.pack(side="left", padx=10)
+        
+        # Kontener na napisy przypięty po prawej od Canvasu
+        labels_frame = tk.Frame(inner_gauge_frame, bg=config.BG_COLOR)
+        labels_frame.pack(side="left", fill="both", expand=True, padx=(10, 0))
+        
+        # Etykiety wyrównane do lewej strony ("w" - west) wewnątrz swojego kontenera
+        self.lbl_target = tk.Label(labels_frame, text="Target: 0.0 RPS", bg=config.BG_COLOR, fg="white", font=("Arial", 20, "bold"))
+        self.lbl_target.pack(anchor="w")
+        
+        self.lbl_steering = tk.Label(labels_frame, text="Steering: 0.00", bg=config.BG_COLOR, fg="#FFAA00", font=("Arial", 14))
+        self.lbl_steering.pack(anchor="w", pady=(5, 0))
+        
+        # --- (Reszta funkcji zostaje bez zmian) ---
         self.odrive_widgets = {}
-
         container = tk.Frame(self.center_frame, bg=config.BG_COLOR)
         container.pack(fill="both", expand=True)
-
+        
         ids = ["00", "10", "01", "11"]
-
         for i, odrive_id in enumerate(ids):
             frame, odrive_widget = self._build_odrive_panel(container, odrive_id)
-
             row = i // 2
             col = i % 2
-
             frame.grid(row = row, column= col, sticky="nsew", padx=5, pady=5)
-
             self.odrive_widgets[odrive_id] = odrive_widget
-
+            
         for i in range(2):
             container.grid_rowconfigure(i, weight=1)
             container.grid_columnconfigure(i, weight=1)
-
+            
         # Feedback Frame
         fb_frame = tk.LabelFrame(self.center_frame, text="Feedback & Diagnostyka", bg=config.BG_COLOR, fg="#00ff00")
         fb_frame.pack(pady=20, fill="x", padx=10)
         
-        # 1. RPS (Dodano)
         self.lbl_meas_vel = tk.Label(fb_frame, text="RPS: 0.00", bg=config.BG_COLOR, fg="#00ff00", font=("Consolas", 18))
         self.lbl_meas_vel.pack(anchor="w", padx=10, pady=2)
-
-        # 2. Kontener prędkości (km/h i m/s obok siebie)
+        
         speed_container = tk.Frame(fb_frame, bg=config.BG_COLOR)
         speed_container.pack(anchor="w", padx=10, pady=2)
-        
         self.lbl_kmh = tk.Label(speed_container, text="0.0 km/h", bg=config.BG_COLOR, fg="#ff00ff", font=("Consolas", 20, "bold"))
         self.lbl_kmh.pack(side="left", padx=(0, 20))
-        
         self.lbl_ms = tk.Label(speed_container, text="0.00 m/s", bg=config.BG_COLOR, fg="#ff88ff", font=("Consolas", 14))
         self.lbl_ms.pack(side="left")
-
-        # 3. Pozycja
+        
         self.lbl_pos = tk.Label(fb_frame, text="Pozycja: 0.00 obr", bg=config.BG_COLOR, fg="#00ccff", font=("Consolas", 18))
         self.lbl_pos.pack(anchor="w", padx=10, pady=5)
         
-        # 4. Dystans i Reset
         dist_container = tk.Frame(fb_frame, bg=config.BG_COLOR)
         dist_container.pack(anchor="w", padx=10, pady=5)
-        
         self.lbl_dist = tk.Label(dist_container, text="Dystans: 0.00 m", bg=config.BG_COLOR, fg="white", font=("Consolas", 18))
         self.lbl_dist.pack(side="left")
         
-        #tk.Button(dist_container, text="[RESET]", command=lambda : self.reset_trip(), bg="#444", fg="white", font=("Arial", 10)).pack(side="left", padx=10)
-        
         tk.Frame(fb_frame, height=1, bg="#444").pack(fill="x", padx=5, pady=5)
-        
-        # 5. Diagnostyka (Packet Age + Lag)
         self.lbl_packet_age = tk.Label(fb_frame, text="Sieć (Packet Age): -- ms", bg=config.BG_COLOR, fg="#aaaaaa", font=("Consolas", 11))
         self.lbl_packet_age.pack(anchor="w", padx=10)
-
         self.lbl_lag = tk.Label(fb_frame, text="Lag: -- ms", bg=config.BG_COLOR, fg="#aaaaaa", font=("Consolas", 16, "bold"))
         self.lbl_lag.pack(anchor="w", padx=10, pady=(5,10))
 
@@ -601,6 +609,30 @@ class DashboardGUI:
                     widgets["lbl_lag"].config(fg="orange")
                 else:
                     widgets["lbl_lag"].config(fg="red")
+            # --- NOWY KOD: ALARM DŹWIĘKOWY (LAG > 1000 ms) ---
+                # --- NOWY KOD: ALARM DŹWIĘKOWY SUBPROCESS (LAG > 1000 ms) ---
+                if lag > 1000:
+                    current_time = time.time()
+                    # Sprawdź, czy minęła co najmniej 1 sekunda od ostatniego alarmu
+                    if current_time - self.state.last_alarm_time > 1.0:
+                        
+                        if getattr(self, 'has_alarm', False):
+                            import subprocess
+                            try:
+                                # paplay to domyślny systemowy odtwarzacz audio na Steam Decku.
+                                # Używamy Popen, aby dźwięk odtworzył się asynchronicznie w tle (nie blokując GUI).
+                                subprocess.Popen(["paplay", "alarm.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            except FileNotFoundError:
+                                try:
+                                    # Fallback: jeśli paplay nie istnieje, próbujemy standardowego ALSA
+                                    subprocess.Popen(["aplay", "alarm.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                except Exception as e:
+                                    print(f"Błąd odtwarzania audio: {e}")
+                        
+                        self.state.log(f"!!! UWAGA: KRYTYCZNY LAG na ODrive {odrive_id} ({int(lag)}ms) !!!")
+                        self.state.last_alarm_time = current_time
+                # -----------------------------------------------------
+                # -------------------------------------------------
 
         # --- AKTUALIZACJA 3 DIOD SIECIOWYCH ---
         color_ground = "#00ff00" if self.state.ping_ground_ok else "#444"
@@ -629,15 +661,19 @@ class DashboardGUI:
             
     def _draw_gauge(self, val):
         self.gauge_canvas.delete("all")
-        cx, cy, r = 200, 150, 130
+        # ZMIANA: Skurczony zegar, przesunięty nieco wyżej (r=130 na r=95)
+        cx, cy, r = 100, 115, 95
         max_v = config.ABSOLUTE_MAX_LIMIT
         
-        self.gauge_canvas.create_arc(cx-r, cy-r, cx+r, cy+r, start=0, extent=180, style="arc", outline="#333", width=25)
+        # ZMIANA: Cieńsze obręcze wskaźników (width=25 na width=20)
+        self.gauge_canvas.create_arc(cx-r, cy-r, cx+r, cy+r, start=0, extent=180, style="arc", outline="#333", width=20)
         limit_angle = (self.state.current_speed_limit / max_v) * 180
-        self.gauge_canvas.create_arc(cx-r, cy-r, cx+r, cy+r, start=180, extent=-limit_angle, style="arc", outline="#665500", width=25)
+        self.gauge_canvas.create_arc(cx-r, cy-r, cx+r, cy+r, start=180, extent=-limit_angle, style="arc", outline="#665500", width=20)
         val_clamped = max(-max_v, min(max_v, val))
         draw_angle = (val_clamped / max_v) * 90 
         color = "#00ff00" if val >= 0 else "#ff5500"
-        self.gauge_canvas.create_arc(cx-r, cy-r, cx+r, cy+r, start=90, extent=-draw_angle, style="arc", outline=color, width=25)
-        self.gauge_canvas.create_text(cx, cy-20, text=f"{val:.1f}", fill="white", font=("Arial", 36, "bold"))
-        self.gauge_canvas.create_text(cx, cy+25, text=f"Max Limit: {self.state.current_speed_limit:.1f} RPS", fill="#888", font=("Arial", 12))
+        self.gauge_canvas.create_arc(cx-r, cy-r, cx+r, cy+r, start=90, extent=-draw_angle, style="arc", outline=color, width=20)
+        
+        # ZMIANA: Dopasowanie czcionek do nowego rozmiaru
+        self.gauge_canvas.create_text(cx, cy-15, text=f"{val:.1f}", fill="white", font=("Arial", 28, "bold"))
+        self.gauge_canvas.create_text(cx, cy+20, text=f"Max Limit: {self.state.current_speed_limit:.1f} RPS", fill="#888", font=("Arial", 10))
