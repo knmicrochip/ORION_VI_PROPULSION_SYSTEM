@@ -1,0 +1,8 @@
+# Ignore everything
+*
+
+# But NOT directories (so exceptions can work)
+!*/
+
+# Keep .gitignore
+!.gitignore
