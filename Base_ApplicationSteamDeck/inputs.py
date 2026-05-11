@@ -119,6 +119,8 @@ class InputManager:
                         joy_active = True
                     
                     # Skręt (Axis 5 lub 2 - zależy czy sterownik PC czy bezpośrednio konsola)
+                    axis2 = joy.get_axis(2)
+                    if abs(axis2) > config.JOYSTICK_DEADZONE:
                         steering = joy.get_axis(2)
                 else: # Przekazujemy limit ze strzałek do stanu aplikacji
                     app_state.current_speed_limit = self.pad_max_limit
