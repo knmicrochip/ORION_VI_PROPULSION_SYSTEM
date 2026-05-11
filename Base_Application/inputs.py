@@ -56,7 +56,7 @@ class InputManager:
                 # for i in range(joy.get_numaxes()):
                 #     val = joy.get_axis(i)
                 #     print(f"Axis {i}: {val:.3f}")
-                print(joy.get_guid())
+                # print(joy.get_guid())
                 if joy.get_guid() == config.LOGITECH_GUID:
                     print("logitech", flush=True)
                     # Limit prędkości (Axis 3 - suwak/przepustnica)

@@ -103,7 +103,10 @@ class InputManager:
         if self.joysticks:
             try:
                 joy = self.joysticks[0]
-                # print(joy.get_guid())
+                for i in range(joy.get_numaxes()):
+                    val = joy.get_axis(i)
+                    print(f"Axis {i}: {val:.3f}")
+                print(joy.get_guid())
                 if joy.get_guid() == config.STEAMDECK_GUID:
                     # Przekazujemy limit ze strzałek do stanu aplikacji
                     app_state.current_speed_limit = self.pad_max_limit
