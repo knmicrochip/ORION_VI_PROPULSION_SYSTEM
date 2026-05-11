@@ -47,7 +47,7 @@ class InputManager:
         """Oblicza sterowanie i aktualizuje AppState"""
         try:
             events = pygame.event.get()
-        except KeyError:
+        except (KeyError, SystemError):
             events = []
             
         for event in events:
