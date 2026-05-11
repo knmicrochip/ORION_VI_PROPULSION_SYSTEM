@@ -6,10 +6,10 @@ import time
 class InputManager:
     def __init__(self):
         pygame.init()
-            # Steam Deck/SDL requires a display to properly init the event queue
-        if not pygame.display.get_surface():
-            pygame.display.set_mode((1, 1), pygame.NOFRAME)
+
         pygame.joystick.init()
+        pygame.event.set_blocked(0)
+
         self.joysticks = []
         self.scan_joysticks()
         
