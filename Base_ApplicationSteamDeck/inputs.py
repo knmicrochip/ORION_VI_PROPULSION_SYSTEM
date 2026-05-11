@@ -108,6 +108,7 @@ class InputManager:
                     print(f"Axis {i}: {val:.3f}")
                 print(joy.get_guid())
                 if joy.get_guid() == config.STEAMDECK_GUID:
+                    print("steam deck")
                     # Przekazujemy limit ze strzałek do stanu aplikacji
                     app_state.current_speed_limit = self.pad_max_limit
                     
@@ -118,7 +119,7 @@ class InputManager:
                         joy_active = True
                     
                     # Skręt (Axis 5 lub 2 - zależy czy sterownik PC czy bezpośrednio konsola)
-                        steering = joy.get_axis(3)
+                        steering = joy.get_axis(2)
                 else: # Przekazujemy limit ze strzałek do stanu aplikacji
                     app_state.current_speed_limit = self.pad_max_limit
                     
