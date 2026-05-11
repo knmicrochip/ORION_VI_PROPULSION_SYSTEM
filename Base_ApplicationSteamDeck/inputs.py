@@ -103,22 +103,33 @@ class InputManager:
         if self.joysticks:
             try:
                 joy = self.joysticks[0]
-                print(joy.get_guid())
-
-                # Przekazujemy limit ze strzałek do stanu aplikacji
-                app_state.current_speed_limit = self.pad_max_limit
-                
-                # Gaz (Axis 1 - lewa gałka pionowo)
-                axis1 = -joy.get_axis(1)
-                if abs(axis1) > config.JOYSTICK_DEADZONE:
-                    joy_throttle = axis1 * app_state.current_speed_limit
-                    joy_active = True
-                
-                # Skręt (Axis 5 lub 2 - zależy czy sterownik PC czy bezpośrednio konsola)
-                if joy.get_numaxes() > config.STEERING_AXIS_INDEX:
-                    steering = joy.get_axis(config.STEERING_AXIS_INDEX)
-                elif joy.get_numaxes() > 2:
-                    steering = joy.get_axis(2)
+                # print(joy.get_guid())
+                if joy.get_guid() == config.STEAMDECK_GUID:
+                    # Przekazujemy limit ze strzałek do stanu aplikacji
+                    app_state.current_speed_limit = self.pad_max_limit
+                    
+                    # Gaz (Axis 1 - lewa gałka pionowo)
+                    axis1 = -joy.get_axis(1)
+                    if abs(axis1) > config.JOYSTICK_DEADZONE:
+                        joy_throttle = axis1 * app_state.current_speed_limit
+                        joy_active = True
+                    
+                    # Skręt (Axis 5 lub 2 - zależy czy sterownik PC czy bezpośrednio konsola)
+                        steering = joy.get_axis(3)
+                else: # Przekazujemy limit ze strzałek do stanu aplikacji
+                    app_state.current_speed_limit = self.pad_max_limit
+                    
+                    # Gaz (Axis 1 - lewa gałka pionowo)
+                    axis1 = -joy.get_axis(1)
+                    if abs(axis1) > config.JOYSTICK_DEADZONE:
+                        joy_throttle = axis1 * app_state.current_speed_limit
+                        joy_active = True
+                    
+                    # Skręt (Axis 5 lub 2 - zależy czy sterownik PC czy bezpośrednio konsola)
+                    if joy.get_numaxes() > config.STEERING_AXIS_INDEX:
+                        steering = joy.get_axis(config.STEERING_AXIS_INDEX)
+                    elif joy.get_numaxes() > 2:
+                        steering = joy.get_axis(2)
                     
             except Exception:
                 pass
