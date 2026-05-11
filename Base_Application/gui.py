@@ -247,8 +247,8 @@ class DashboardGUI:
         self.preview_frame = tk.LabelFrame(self.left_frame, text="Podgląd Skrętu Kół", 
                                            bg=config.BG_COLOR, fg=config.FG_COLOR)
         # Umieszczamy nad wykresem lub jako główny element dolny
-        # self.preview_frame.pack(side="top", fill="both", expand=True, pady=10)
-        sellf.preview_frame.grid(row=2,column=0,columnspan=2,sticky="nsew",pady=(10,10))
+        self.preview_frame.pack(side="top", fill="both", expand=True, pady=10)
+        # self.preview_frame.grid(row=2,column=0,columnspan=2,sticky="nsew",pady=(10,10))
 
         self.rover_canvas = tk.Canvas(self.preview_frame, bg="#111111", 
                                       highlightthickness=0, height=250)

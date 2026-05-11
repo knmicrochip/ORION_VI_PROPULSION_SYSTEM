@@ -226,9 +226,13 @@ class DashboardGUI:
         self.joy_container = tk.Frame(self.left_frame, bg=config.BG_COLOR)
         self.joy_container.pack(side="top", fill="x")
         self.joystick_list_frame = tk.Frame(self.joy_container, bg=config.BG_COLOR)
+
+        
+        # tk.Button(self.joy_container, text="Quit!", command=self.Close, 
+        #             bg=config.BTN_RESET_COLOR, fg="white", font=("Arial", 10, "bold")).pack(fill="x", pady=(0,10))
         
         tk.Button(self.joy_container, text="⟳ RESET JOYSTICK", command=self.refresh_joysticks, 
-                  bg=config.BTN_RESET_COLOR, fg="white", font=("Arial", 10, "bold")).pack(fill="x", pady=(0,10))
+                    bg=config.BTN_RESET_COLOR, fg="white", font=("Arial", 10, "bold")).pack(fill="x", pady=(0,10))
         self.joystick_list_frame.pack(fill="both", expand=True)
 
         # Instrukcja
