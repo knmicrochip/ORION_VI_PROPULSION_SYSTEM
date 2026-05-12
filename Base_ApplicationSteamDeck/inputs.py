@@ -6,10 +6,7 @@ import time
 class InputManager:
     def __init__(self):
         pygame.init()
-
         pygame.joystick.init()
-        pygame.event.set_blocked(0)
-
         self.joysticks = []
         self.scan_joysticks()
         
@@ -24,6 +21,7 @@ class InputManager:
         self.joysticks = []
         pygame.joystick.quit()
         pygame.joystick.init()
+        pygame.event.clear()
         count = pygame.joystick.get_count()
         self.joysticks = [pygame.joystick.Joystick(i) for i in range(count)]
         for joy in self.joysticks:
@@ -47,8 +45,10 @@ class InputManager:
         """Oblicza sterowanie i aktualizuje AppState"""
         try:
             events = pygame.event.get()
-        except (KeyError, SystemError):
+        except (KeyError, SystemError, Exception) as e: # <--- Zmień tę linijkę
+            # Złap błędy SystemError wynikające z odłączenia / błędu Pygame
             events = []
+            pygame.event.clear() # Wyczyść kolejkę, żeby program nie utknął
             
         for event in events:
             # ==========================================
@@ -103,39 +103,21 @@ class InputManager:
         if self.joysticks:
             try:
                 joy = self.joysticks[0]
-                for i in range(joy.get_numaxes()):
-                    val = joy.get_axis(i)
-                    print(f"Axis {i}: {val:.3f}")
-                print(joy.get_guid())
-                if joy.get_guid() == config.STEAMDECK_GUID:
-                    print("steam deck")
-                    # Przekazujemy limit ze strzałek do stanu aplikacji
-                    app_state.current_speed_limit = self.pad_max_limit
-                    
-                    # Gaz (Axis 1 - lewa gałka pionowo)
-                    axis1 = -joy.get_axis(1)
-                    if abs(axis1) > config.JOYSTICK_DEADZONE:
-                        joy_throttle = axis1 * app_state.current_speed_limit
-                        joy_active = True
-                    
-                    # Skręt (Axis 5 lub 2 - zależy czy sterownik PC czy bezpośrednio konsola)
-                    axis2 = joy.get_axis(2)
-                    if abs(axis2) > config.JOYSTICK_DEADZONE:
-                        steering = joy.get_axis(2)
-                else: # Przekazujemy limit ze strzałek do stanu aplikacji
-                    app_state.current_speed_limit = self.pad_max_limit
-                    
-                    # Gaz (Axis 1 - lewa gałka pionowo)
-                    axis1 = -joy.get_axis(1)
-                    if abs(axis1) > config.JOYSTICK_DEADZONE:
-                        joy_throttle = axis1 * app_state.current_speed_limit
-                        joy_active = True
-                    
-                    # Skręt (Axis 5 lub 2 - zależy czy sterownik PC czy bezpośrednio konsola)
-                    if joy.get_numaxes() > config.STEERING_AXIS_INDEX:
-                        steering = joy.get_axis(config.STEERING_AXIS_INDEX)
-                    elif joy.get_numaxes() > 2:
-                        steering = joy.get_axis(2)
+                
+                # Przekazujemy limit ze strzałek do stanu aplikacji
+                app_state.current_speed_limit = self.pad_max_limit
+                
+                # Gaz (Axis 1 - lewa gałka pionowo)
+                axis1 = -joy.get_axis(1)
+                if abs(axis1) > config.JOYSTICK_DEADZONE:
+                    joy_throttle = axis1 * app_state.current_speed_limit
+                    joy_active = True
+                
+                # Skręt (Axis 5 lub 2 - zależy czy sterownik PC czy bezpośrednio konsola)
+                if joy.get_numaxes() > config.STEERING_AXIS_INDEX:
+                    steering = joy.get_axis(config.STEERING_AXIS_INDEX)
+                elif joy.get_numaxes() > 2:
+                    steering = joy.get_axis(2)
                     
             except Exception:
                 pass
