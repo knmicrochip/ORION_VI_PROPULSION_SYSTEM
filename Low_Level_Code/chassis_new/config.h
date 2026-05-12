@@ -9,7 +9,7 @@
 #define SIDE_LEFT 0
 #define SIDE_RIGHT 1
 
-#define CURRENT_SIDE SIDE_LEFT
+#define CURRENT_SIDE SIDE_RIGHT
 
 // --- KONFIGURACJA ZALEŻNA OD STRONY ---
 #if CURRENT_SIDE == SIDE_LEFT
@@ -30,13 +30,13 @@
   #define JSON_FRONT_STEER "fl_rad"
   #define JSON_REAR_STEER  "rl_rad"
 
-  const int FRONT_MIN_PULSE = 1509; 
-  const int FRONT_MAX_PULSE = 2843; 
-  const int FRONT_MID_PULSE = 2176;
+  const int FRONT_MIN_PULSE = 1479; 
+  const int FRONT_MAX_PULSE = 2813; 
+  const int FRONT_MID_PULSE = 2146;
 
-  const int REAR_MIN_PULSE = 1309; 
-  const int REAR_MAX_PULSE = 2643; 
-  const int REAR_MID_PULSE = 1976;
+  const int REAR_MIN_PULSE = 1329; 
+  const int REAR_MAX_PULSE = 2663; 
+  const int REAR_MID_PULSE = 1996;
 
 #elif CURRENT_SIDE == SIDE_RIGHT
   #define NET_MAC_END 0x52
@@ -62,9 +62,9 @@
   const int FRONT_MAX_PULSE = 2743; 
   const int FRONT_MID_PULSE = 2076;
 
-  const int REAR_MIN_PULSE = 1109; 
-  const int REAR_MAX_PULSE = 2443; 
-  const int REAR_MID_PULSE = 1776;
+  const int REAR_MIN_PULSE = 1129; 
+  const int REAR_MAX_PULSE = 2463; 
+  const int REAR_MID_PULSE = 1796;
 #endif
 
 // --- PINY SIECI I CAN ---
