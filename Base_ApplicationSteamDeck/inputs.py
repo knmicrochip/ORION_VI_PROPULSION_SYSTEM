@@ -114,13 +114,13 @@ class InputManager:
                 
                 # Sprawdzenie osi analogowych (L2=4, R2=5) -> Wartości osi rosną od -1 do 1
                 if joy.get_numaxes() > 5:
-                    if joy.get_axis(4) > 0.5: l2_pressed = True
+                    if joy.get_axis(2) > 0.5: l2_pressed = True
                     if joy.get_axis(5) > 0.5: r2_pressed = True
                 
                 # Awaryjne zabezpieczenie, gdyby system widział triggery jako przyciski (6 i 7)
                 if joy.get_numbuttons() > 7:
-                    if joy.get_button(6): l2_pressed = True
-                    if joy.get_button(7): r2_pressed = True
+                    if joy.get_button(2): l2_pressed = True
+                    if joy.get_button(5): r2_pressed = True
                 
                 if l2_pressed and r2_pressed:
                     # Wyzwalaj tylko jeśli hamulec nie jest już w trakcie

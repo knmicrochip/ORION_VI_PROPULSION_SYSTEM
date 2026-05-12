@@ -10,8 +10,6 @@ volatile float targetVelocityRear = 0.0f;
 volatile float targetSteeringFront = 0.0f; 
 volatile float targetSteeringRear = 0.0f;    
 
-float currentServoPosA = MID_PULSE;   
-float currentServoPosB = MID_PULSE;   
 float servoVoltageA = 0.0f; 
 float servoVoltageB = 0.0f; 
 float servoCurrentA = 0.0f; 
