@@ -18,6 +18,18 @@ void executeCommand(int cmd, int node_id) {
         case 4: setControlMode(node_id, CONTROL_MODE_VELOCITY_CONTROL, INPUT_MODE_VEL_RAMP); break;
         case 5: requestODriveErrors(node_id); break;
         case 6: rebootODrive(node_id); break;
+        
+        // --- NOWY CASE 7: NATYCHMIASTOWE HAMOWANIE ---
+        case 7: 
+            if (node_id == ODRIVE_FRONT_ID) targetVelocityFront = 0.0f;
+            if (node_id == ODRIVE_REAR_ID)  targetVelocityRear = 0.0f;
+            
+            // Wyłączamy rampę - przełączamy w tryb natychmiastowy (PASSTHROUGH)
+            setControlMode(node_id, CONTROL_MODE_VELOCITY_CONTROL, INPUT_MODE_PASSTHROUGH);
+            
+            // Natychmiast wymuszamy zerową prędkość po szynie CAN
+            sendVelocity(node_id, 0.0f);
+            break;
     }
 }
 
@@ -32,6 +44,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
     StaticJsonDocument<1024> doc;
     DeserializationError error = deserializeJson(doc, messageTemp);
     
+    // (początek funkcji callback pozostaje bez zmian)
+
     if (!error) {
       if (doc["eventType"] == "propulsion") {
         JsonObject payloadObj = doc["velocity"];
@@ -39,13 +53,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
         targetVelocityFront = payloadObj[JSON_FRONT_SPEED].as<float>();
         targetVelocityRear  = payloadObj[JSON_REAR_SPEED].as<float>();
         
-        // Zczytywanie niezależnego skrętu dla przodu i tyłu
         targetSteeringFront = payloadObj[JSON_FRONT_STEER].as<float>();
         targetSteeringRear  = payloadObj[JSON_REAR_STEER].as<float>();
         
+        // --- DODANE: Zapewniamy powrót do łagodnej rampy przy normalnej jeździe ---
+        setControlMode(ODRIVE_FRONT_ID, CONTROL_MODE_VELOCITY_CONTROL, INPUT_MODE_VEL_RAMP);
+        setControlMode(ODRIVE_REAR_ID, CONTROL_MODE_VELOCITY_CONTROL, INPUT_MODE_VEL_RAMP);
+        
         lastMqttCmdTime = millis();
       }
-      // 2. Zachowanie zgodności wstecznej (starsza komenda kalibracji z tablicą [] )
       else if (doc.is<JsonArray>()) {
         JsonArray arr = doc.as<JsonArray>();
         if(arr.size() == 5) {

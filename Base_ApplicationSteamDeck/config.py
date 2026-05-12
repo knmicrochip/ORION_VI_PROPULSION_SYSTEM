@@ -12,6 +12,7 @@ TOPIC_FEEDBACK_RIGHT = "propulsion/feedback_right"
 
 
 # Komendy MQTT
+# config.py - fragment do zmiany:
 CMD_MAP = {
     "none": 0,
     "calibrate": 1,
@@ -19,7 +20,8 @@ CMD_MAP = {
     "set_vel_mode": 3,
     "set_ramp_mode": 4,
     "dump_errors": 5,
-    "reboot_odrive": 6
+    "reboot_odrive": 6,
+    "ebrake": 7  # <--- NOWE: Dodana komenda 7 dla hamowania awaryjnego
 }
 
 # --- KONFIGURACJA STEROWANIA ---

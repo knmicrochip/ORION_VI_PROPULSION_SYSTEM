@@ -101,6 +101,10 @@ class MqttManager:
 
     def send_drive_command(self):
         """Wysyła ramkę sterującą JSON zależnie od wybranego trybu jazdy"""
+        if getattr(self.state, 'ebrake_active', False):
+            return  # Przerywa działanie funkcji - brak ramek "propulsion" po MQTT przez 1s
+        # -----------------------------------------------
+        
         if self.client and self.state.mqtt_connected:
             import math # Upewnij się, że biblioteka jest zaimportowana
             

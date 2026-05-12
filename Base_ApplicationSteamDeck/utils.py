@@ -36,7 +36,9 @@ class ODrive:
         self.last_feedback_time = 0.0
         # NOWE POLA DLA SERWO
         self.servo_current = 0.0
-        self.servo_angle_deg = 0.0
+        self.servo_angle_deg = 0.0       
+        # --- NOWE: Zmienne dla awaryjnego hamowania (L2 + R2) ---
+
 
 class AppState:
     """Klasa przechowująca współdzielony stan aplikacji"""
@@ -63,7 +65,9 @@ class AppState:
         self.drive_mode = 1           # 1: Normalny, 2: Obrót w miejscu
         self.mode_switch_time = 0.0   # Czas ostatniej zmiany trybu (do opóźnienia)
         # ------------------------------------
-        
+        self.ebrake_active = False
+        self.ebrake_end_time = 0.0
+        self.trigger_ebrake_cmd = False
         # Statusy
         self.mqtt_connected = False
         self.mqtt_status_text = "MQTT: Rozłączono"

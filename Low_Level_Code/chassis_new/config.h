@@ -9,7 +9,7 @@
 #define SIDE_LEFT 0
 #define SIDE_RIGHT 1
 
-#define CURRENT_SIDE SIDE_LEFT
+#define CURRENT_SIDE SIDE_RIGHT
 
 // --- KONFIGURACJA ZALEŻNA OD STRONY ---
 #if CURRENT_SIDE == SIDE_LEFT
@@ -30,6 +30,14 @@
   #define JSON_FRONT_STEER "fl_rad"
   #define JSON_REAR_STEER  "rl_rad"
 
+  const int FRONT_MIN_PULSE = 1309; 
+  const int FRONT_MAX_PULSE = 2643; 
+  const int FRONT_MID_PULSE = 1976;
+
+  const int REAR_MIN_PULSE = 1309; 
+  const int REAR_MAX_PULSE = 2643; 
+  const int REAR_MID_PULSE = 1976;
+
 #elif CURRENT_SIDE == SIDE_RIGHT
   #define NET_MAC_END 0x52
   #define NET_IP_END 52
@@ -47,6 +55,14 @@
   #define JSON_REAR_SPEED  "rr_speed"
   #define JSON_FRONT_STEER "fr_rad"
   #define JSON_REAR_STEER  "rr_rad"
+
+  const int FRONT_MIN_PULSE = 1309; 
+  const int FRONT_MAX_PULSE = 2643; 
+  const int FRONT_MID_PULSE = 1976;
+
+  const int REAR_MIN_PULSE = 1309; 
+  const int REAR_MAX_PULSE = 2643; 
+  const int REAR_MID_PULSE = 1976;
 #endif
 
 // --- PINY SIECI I CAN ---
@@ -79,18 +95,15 @@
 // --- KONFIGURACJA SERWA --
 // --- KONFIGURACJA SERWA ---
 // (Usuń SMOOTH_FACTOR i DEADBAND, jeśli jeszcze je masz)
-const int MIN_PULSE = 500; 
-const int MAX_PULSE = 2500; 
-const int MID_PULSE = 1500; 
 #define MAX_STEER_RAD 1.0f 
 
 // ==========================================
 // USTAWIENIA PID DLA SKRĘTU (ZABEZPIECZENIA)
 // ==========================================
-#define STEER_KP 2.5f        // (Proporcjonalny) Jak agresywnie goni cel
+#define STEER_KP 5.0f        // (Proporcjonalny) Jak agresywnie goni cel
 #define STEER_KI 0.1f        // (Całkujący) Niweluje uchyb ustalony
 #define STEER_KD 0.05f       // (Różniczkujący) Hamuje przed celem, zapobiega oscylacjom
-#define STEER_MAX_VEL 1.5f   // ZABEZPIECZENIE: Maksymalna prędkość skrętu (radiany na sekundę)
+#define STEER_MAX_VEL 0.5f   // ZABEZPIECZENIE: Maksymalna prędkość skrętu (radiany na sekundę)
 
 // --- PARAMETRY POMIARÓW ADC (ACS712 - 5A) ---
 const float ADC_VREF = 3.3f;        // Napięcie referencyjne ESP32

@@ -96,15 +96,17 @@ void setup() {
   ESP32PWM::allocateTimer(2);
   ESP32PWM::allocateTimer(3);
 
-  servoA.setPeriodHertz(50); // Standardowe 50Hz dla serw RC
-  servoA.attach(SV_A_PIN, MIN_PULSE, MAX_PULSE);
+// ... (poprzedni kod setupu)
+  servoA.setPeriodHertz(50);
+  servoA.attach(SV_A_PIN, FRONT_MIN_PULSE, FRONT_MAX_PULSE); // Użyj limitów przodu
   
   servoB.setPeriodHertz(50);
-  servoB.attach(SV_B_PIN, MIN_PULSE, MAX_PULSE);
-
-  // Ustawienie na pozycję środkową przy starcie (używamy mikrosekund)
-  servoA.writeMicroseconds(MID_PULSE);
-  servoB.writeMicroseconds(MID_PULSE);
+  servoB.attach(SV_B_PIN, REAR_MIN_PULSE, REAR_MAX_PULSE);   // Użyj limitów tyłu
+  
+  // Ustawienie na pozycję środkową przy starcie
+  servoA.writeMicroseconds(FRONT_MID_PULSE);
+  servoB.writeMicroseconds(REAR_MID_PULSE);
+  // ... (reszta setupu)
 
   initNetwork();   
   initCAN();   
@@ -126,25 +128,31 @@ SteerPID pidRear(STEER_KP, STEER_KI, STEER_KD, STEER_MAX_VEL);
 
 
 // --- NOWA FUNKCJA STERUJĄCA ---
-void updateServoPID(float targetRad, float &currentRad, SteerPID &pid, Servo &servo) {   
-  // 1. Zabezpieczenie celu, żeby nie przekroczył mechanicznego maksimum
+void updateServoPID(float targetRad, float &currentRad, SteerPID &pid, Servo &servo, int minPulse, int midPulse, int maxPulse) {
+  // 1. Zabezpieczenie celu
   float safeTarget = constrain(targetRad, -MAX_STEER_RAD, MAX_STEER_RAD);
   
   // 2. PID wylicza łagodny przyrost pozycji
-  float deltaRad = pid.compute(safeTarget, currentRad);   
-  
-  // 3. Aktualizujemy obecną pozycję o ten łagodny przyrost
+  float deltaRad = pid.compute(safeTarget, currentRad);
   currentRad += deltaRad;
   
-  // 4. Mapowanie kąta (rad) prosto na impuls mikrosekundowy (500 - 2500)
-  float normalized = currentRad / MAX_STEER_RAD;   
-  float targetPulse = MID_PULSE + (normalized * (MAX_PULSE - MID_PULSE));   
+  // 3. Mapowanie: ułamek maksymalnego wychylenia (od -1.0 do 1.0)
+  float normalized = currentRad / MAX_STEER_RAD;
+  
+  // 4. Konwersja na impulsy z uwzględnieniem asymetrycznego środka (ważne dla przodu!)
+  float targetPulse;
+  if (normalized >= 0) {
+    // Wychylenie w jedną stronę (np. od 1976 do 2643)
+    targetPulse = midPulse + (normalized * (maxPulse - midPulse));
+  } else {
+    // Wychylenie w drugą stronę (np. od 1976 do 1309)
+    // Zmienna 'normalized' jest tu ujemna, więc znak sam się dopasuje
+    targetPulse = midPulse + (normalized * (midPulse - minPulse)); 
+  }
   
   // Zabezpieczenie ostateczne dla serwa
-  targetPulse = constrain(targetPulse, MIN_PULSE, MAX_PULSE);
-  
-  // Wysłanie bezpiecznego impulsu do sprzętu
-  servo.writeMicroseconds((int)targetPulse); 
+  targetPulse = constrain(targetPulse, minPulse, maxPulse);
+  servo.writeMicroseconds((int)targetPulse);
 }
 
 void readSensors() {   
@@ -179,9 +187,10 @@ void loop() {
   
   handleNetwork();   
   
-  // Sterowanie przekazujące obiekty servoA i servoB
-  updateServoPID(targetSteeringFront, currentSteerRadFront, pidFront, servoA);   
-  updateServoPID(targetSteeringRear, currentSteerRadRear, pidRear, servoB);
+// Wewnątrz loop():
+  updateServoPID(targetSteeringFront, currentSteerRadFront, pidFront, servoA, FRONT_MIN_PULSE, FRONT_MID_PULSE, FRONT_MAX_PULSE);
+  
+  updateServoPID(targetSteeringRear, currentSteerRadRear, pidRear, servoB, REAR_MIN_PULSE, REAR_MID_PULSE, REAR_MAX_PULSE);
   
   readSensors();   
   

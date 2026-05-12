@@ -50,9 +50,22 @@ def main():
     
     # 6. Pętla Główna
     def main_loop():
-        # A. Odczyt wejść (Joystick/Klawiatura) -> Aktualizacja AppState
         input_manager.update(app_state)
         
+        # --- NOWY KOD: Obsługa Logiki Hamulca Awaryjnego ---
+        # 1. Zegar: Odblokowanie po 1 sekundzie
+        if app_state.ebrake_active:
+            import time # Upewnij się, że time jest zaimportowane (lub na górze pliku)
+            if time.time() > app_state.ebrake_end_time:
+                app_state.ebrake_active = False
+                
+        # 2. Jeśli świeżo wciśnięto triggery, wyślij komendę "ebrake" (CMD 7) do lewej (l) i prawej (r) połowy
+        if getattr(app_state, 'trigger_ebrake_cmd', False):
+            mqtt_manager.send_cmd("ebrake", "l")
+            mqtt_manager.send_cmd("ebrake", "r")
+            app_state.trigger_ebrake_cmd = False
+        # ----------------------------------------------------
+
         # B. Wysłanie komend do ODrive przez MQTT
         mqtt_manager.send_drive_command()
         # --- NOWY KOD: Sprawdzenie wyzwolenia z pada ---

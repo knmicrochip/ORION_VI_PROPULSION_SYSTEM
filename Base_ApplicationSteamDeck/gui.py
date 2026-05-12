@@ -560,8 +560,23 @@ class DashboardGUI:
             self.btn_reboot_odrive.config(state="normal", bg=config.BTN_REBOOT_COLOR)
         
         self.root.after(0, enable_buttons)
-
+        # W gui.py
     def update_interface(self):
+        # --- NOWY KOD: Czerwone Tło podczas E-BRAKE ---
+        if getattr(self.state, 'ebrake_active', False) and not getattr(self, 'is_red_bg', False):
+            # Zamaluj na czerwono:
+            for frame in [self.root, self.main_frame, self.left_frame, self.center_frame, self.right_frame]:
+                frame.configure(bg="#660000") # Ciemna czerwień
+            self.is_red_bg = True
+            
+        elif not getattr(self.state, 'ebrake_active', False) and getattr(self, 'is_red_bg', True):
+            # Przywróć oryginalne kolory z config.BG_COLOR:
+            for frame in [self.root, self.main_frame, self.left_frame, self.center_frame, self.right_frame]:
+                frame.configure(bg=config.BG_COLOR)
+            self.is_red_bg = False
+        # ----------------------------------------------
+
+        # ... (oryginalny kod: self.lbl_target.config(text=f"Target... itd.) ...
         self.lbl_target.config(text=f"Target: {self.state.target_rps:.2f} RPS")
         self.lbl_steering.config(text=f"Steering: {self.state.steering_val:.2f}")
         self.lbl_mqtt_status.config(text=self.state.mqtt_status_text)

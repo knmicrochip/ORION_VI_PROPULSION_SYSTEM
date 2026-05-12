@@ -100,12 +100,35 @@ class InputManager:
         steering = 0.0
         
         # Obsługa Joysticka
+# Obsługa Joysticka
         if self.joysticks:
             try:
                 joy = self.joysticks[0]
                 
                 # Przekazujemy limit ze strzałek do stanu aplikacji
                 app_state.current_speed_limit = self.pad_max_limit
+                
+                # --- NOWY KOD: Obsługa awaryjnego hamowania L2 + R2 ---
+                l2_pressed = False
+                r2_pressed = False
+                
+                # Sprawdzenie osi analogowych (L2=4, R2=5) -> Wartości osi rosną od -1 do 1
+                if joy.get_numaxes() > 5:
+                    if joy.get_axis(4) > 0.5: l2_pressed = True
+                    if joy.get_axis(5) > 0.5: r2_pressed = True
+                
+                # Awaryjne zabezpieczenie, gdyby system widział triggery jako przyciski (6 i 7)
+                if joy.get_numbuttons() > 7:
+                    if joy.get_button(6): l2_pressed = True
+                    if joy.get_button(7): r2_pressed = True
+                
+                if l2_pressed and r2_pressed:
+                    # Wyzwalaj tylko jeśli hamulec nie jest już w trakcie
+                    if not app_state.ebrake_active:
+                        app_state.ebrake_active = True
+                        app_state.ebrake_end_time = time.time() + 1.0 # Blokada na równe 1.0s
+                        app_state.trigger_ebrake_cmd = True
+                        app_state.log("!!! HAMOWANIE AWARYJNE (L2+R2) !!!")
                 
                 # Gaz (Axis 1 - lewa gałka pionowo)
                 axis1 = -joy.get_axis(1)
