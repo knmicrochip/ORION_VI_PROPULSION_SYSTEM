@@ -118,8 +118,8 @@ class MqttManager:
             # TRYB 1: JAZDA NORMALNA (Ackermann 4WS)
             # ===================================================
             if getattr(self.state, 'drive_mode', 1) == 1:
-                L = 1.0  
-                W = 1.0  
+                L = 0.9  
+                W = 0.845  
                 
                 # 1. Zwykłe obliczenia Ackermanna (BEZ s = -s wcześniej!)
                 fl_rad = math.atan((s * L) / (2 + s * W))
@@ -127,11 +127,7 @@ class MqttManager:
                 rl_rad = -fl_rad
                 rr_rad = -fr_rad
 
-                # 2. DOPIERO TERAZ odwracamy wyniki, aby łazik skręcał fizycznie w dobrą stronę
-                fl_rad = -fl_rad
-                fr_rad = -fr_rad
-                rl_rad = -rl_rad
-                rr_rad = -rr_rad
+                
 
                 payload = {
                     "eventType": "propulsion",
