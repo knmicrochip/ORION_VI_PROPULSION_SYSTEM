@@ -29,6 +29,8 @@ B_MATRIX = [
 
 	#TODO testing
 def isFeasible(advance_speed,sidle_speed,rotation_speed):
+	# there is an assumption made here that simplifies logic but it works only for angles smaller then 0.5 PI
+	# it also removes rotation in place
 	is_valid = True
 	previous = 0
 	for plane in B_MATRIX:
