@@ -1,6 +1,6 @@
 import pytest
 
-from controller import isFeasible
+from controller import isFeasible, clampToFeasible
 
 def test_pure_forward():
     """Moving straight ahead should always be feasible."""
@@ -22,3 +22,50 @@ def test_impossible_sidle():
 def test_zero_velocity():
     """Standing still is technically feasible."""
     assert isFeasible(0.0, 0.0, 0.0) is True
+
+def test_clamp_already_feasible():
+    """If a speed profile is already feasible, it shouldn't radically change, 
+    or it should clamp to a valid state near itself."""
+    cmd_vx, cmd_vy, cmd_w = 1.0, 0.0, 0.0  # Pure forward, perfectly valid
+    
+    # Ensure it's feasible first
+    assert isFeasible(cmd_vx, cmd_vy, cmd_w) is True
+    
+    result = clampToFeasible(cmd_vx, cmd_vy, cmd_w)
+    assert result == (cmd_vx, cmd_vy, cmd_w)
+    
+    vx_out, vy_out, w_out = result
+    # It should either be exactly the same or still perfectly feasible
+    assert isFeasible(vx_out, vy_out, w_out) is True
+
+
+def test_clamp_unfeasible_sideways():
+    """Pure sideways motion (vy=2.0, vx=0) is unfeasible for this wheel configuration.
+    The clamp function should return a valid alternative."""
+    cmd_vx, cmd_vy, cmd_w = 0.0, 1.0, 0.0 
+    
+    # Verify it is initially unfeasible
+    assert isFeasible(cmd_vx, cmd_vy, cmd_w) is False
+    
+    result = clampToFeasible(cmd_vx, cmd_vy, cmd_w)
+    
+    # Assert that the function didn't fall through to 'pass' (returning None)
+    assert result is not None
+    
+    vx_out, vy_out, w_out = result
+    # The output MUST be feasible
+    assert isFeasible(vx_out, vy_out, w_out) is True
+
+
+def test_clamp_extreme_rotation():
+    """An extreme combination of high speed and rotation that violates the limits
+    should be brought back into the feasible envelope."""
+    cmd_vx, cmd_vy, cmd_w = 0.5, 0.5, 1.0
+    
+    assert not isFeasible(cmd_vx, cmd_vy, cmd_w)
+
+    result = clampToFeasible(cmd_vx, cmd_vy, cmd_w)
+    assert result is not None
+    
+    vx_out, vy_out, w_out = result
+    assert isFeasible(vx_out, vy_out, w_out) is True

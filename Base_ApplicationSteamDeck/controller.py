@@ -8,10 +8,13 @@
 from math import tan
 
 
-WIDTH_LEFT = 0.5
-WIDTH_RIGHT = 0.5
-LENGHT_FRONT = 0.5
-LENGHT_REAR = 0.5
+TRACK = 0.85
+WHEELBASE = 0.90
+
+WIDTH_LEFT = TRACK/2.0
+WIDTH_RIGHT = TRACK/2.0
+LENGHT_FRONT = WHEELBASE/2.0
+LENGHT_REAR = WHEELBASE/2.0
 
 MAX_ANGLE = 0.785 # 1/4 PI
 MIN_ANGLE = 0.785
@@ -27,7 +30,7 @@ B_MATRIX = [
 	[-tan(MIN_ANGLE),-1,-(LENGHT_FRONT - WIDTH_RIGHT * tan(MIN_ANGLE))],
 ]
 
-	#TODO testing
+	#TODO good testing 
 def isFeasible(advance_speed,sidle_speed,rotation_speed):
 	# there is an assumption made here that simplifies logic but it works only for angles smaller then 0.5 PI
 	# it also removes rotation in place
@@ -36,18 +39,35 @@ def isFeasible(advance_speed,sidle_speed,rotation_speed):
 	for plane in B_MATRIX:
 		tmp = plane[0]*advance_speed + plane[1]*sidle_speed + plane[2]*rotation_speed
 		if tmp == 0:
-			print("plane of discountinuty")
+			# print("plane of discountinuty")
+			pass
 		elif tmp < 0:
-			print("behind the plane")
+			# print("behind the plane")
 			if(previous > 0):
 				is_valid = False
 			previous = -1
 		elif tmp > 0:
-			print("ahead of plane")
+			# print("ahead of plane")
 			if(previous < 0):
 				is_valid = False
 			previous = 1
 	return is_valid
 
+def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
+	if isFeasible(advance_speed,sidle_speed,rotation_speed):
+		return (advance_speed,sidle_speed,rotation_speed)
+	for plane in B_MATRIX:
+		
+		km = plane[0] * advance_speed + plane[1] * sidle_speed + plane[2]
+		kd = plane[0]**2 + plane[1]**2 + plane[2]**2
+		k = km/kd
+		# distance = abs(km)/sqrt(kd)
+		new_advance_speed = advance_speed - k * plane[0]
+		new_sidle_speed = sidle_speed - k * plane[1]
+		new_rotation_speed = rotation_speed - k * plane[2]
+		if(isFeasible(new_advance_speed,new_sidle_speed,new_rotation_speed)):
+			return (new_advance_speed,new_sidle_speed,new_rotation_speed)
+
+	pass
 
 
