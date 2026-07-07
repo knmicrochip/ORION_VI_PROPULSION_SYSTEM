@@ -5,7 +5,22 @@
 # Constrained Independent Steering (2025)
 # 
 
-from math import tan
+#                    ▲                       
+#                    │x                      
+#                    │                       
+#      ┌─────────────┼─────────────┐         
+#      │             │             │         
+#      │             │             │         
+#      │             │             │         
+#   y  │           ω⊙│             │         
+# ◄────┼─────────────┘             │WHEELBASE
+#      │                           │         
+#      │                           │         
+#      │                           │         
+#      │  TRACK                    │         
+#      └───────────────────────────┘         
+
+from math import tan,atan2,sqrt,pi
 
 
 TRACK = 0.85
@@ -16,8 +31,8 @@ WIDTH_RIGHT = TRACK/2.0
 LENGHT_FRONT = WHEELBASE/2.0
 LENGHT_REAR = WHEELBASE/2.0
 
-MAX_ANGLE = 0.785 # 1/4 PI
-MIN_ANGLE = 0.785
+MAX_ANGLE = pi/4 # 1/4 PI
+MIN_ANGLE = pi/4
 
 B_MATRIX = [
 	[-tan(MAX_ANGLE),1,(LENGHT_FRONT + WIDTH_LEFT * tan(MAX_ANGLE))], # wheel 1 max
@@ -71,3 +86,29 @@ def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
 	pass
 
 
+
+	# TODO normalize
+	# TODO better tests
+def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed):
+
+	clamped = clampToFeasible(advance_speed,sidle_speed,rotation_speed)
+	
+	advance_speed = clamped[0]
+	sidle_speed = clamped[1]
+	rotation_speed = clamped[2]
+
+	A = sidle_speed - rotation_speed * WHEELBASE
+	B = sidle_speed + rotation_speed * WHEELBASE
+	C = advance_speed - rotation_speed * TRACK
+	D = advance_speed + rotation_speed * TRACK
+
+
+	return {
+		"FL":{"speed":sqrt(B**2 + C**2),"angle":atan2(B,C)},
+		"RL":{"speed":sqrt(B**2 + D**2),"angle":atan2(B,D)},
+		"RR":{"speed":sqrt(A**2 + D**2),"angle":atan2(A,D)},
+		"FR":{"speed":sqrt(A**2 + C**2),"angle":atan2(A,C)}
+		}
+
+	
+# print(calculateMotorConfiguration(1.0,0.0,0.0))

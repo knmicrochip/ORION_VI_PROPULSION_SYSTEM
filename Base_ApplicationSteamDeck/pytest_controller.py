@@ -1,6 +1,6 @@
 import pytest
-
-from controller import isFeasible, clampToFeasible
+from math import sqrt,pi
+from controller import isFeasible, clampToFeasible, calculateMotorConfiguration
 
 def test_pure_forward():
     """Moving straight ahead should always be feasible."""
@@ -69,3 +69,35 @@ def test_clamp_extreme_rotation():
     
     vx_out, vy_out, w_out = result
     assert isFeasible(vx_out, vy_out, w_out) is True
+
+def test_returns_all_wheels():
+    result = calculateMotorConfiguration(0.0, 0.0, 0.0)
+
+    assert set(result.keys()) == {"FR", "FL", "RL", "RR"}
+
+    for wheel in result.values():
+        assert "speed" in wheel
+        assert "angle" in wheel
+
+
+def test_zero_motion():
+    result = calculateMotorConfiguration(0.0, 0.0, 0.0)
+
+    for wheel in result.values():
+        assert wheel["speed"] == pytest.approx(0.0)
+        assert wheel["angle"] == pytest.approx(0.0)
+
+def test_forward_motion():
+    result = calculateMotorConfiguration(1.0, 0.0, 0.0)
+
+    for wheel in result.values():
+        assert wheel["speed"] == pytest.approx(1.0)
+        assert wheel["angle"] == pytest.approx(0.0)
+
+
+# def test_sideways_motion():
+#     result = calculateMotorConfiguration(0.0, 1.0, 0.0)
+
+#     for wheel in result.values():
+#         # assert wheel["speed"] == pytest.approx(1.0)
+#         assert wheel["angle"] == pytest.approx(pi / 4)
