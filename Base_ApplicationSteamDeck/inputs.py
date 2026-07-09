@@ -98,6 +98,7 @@ class InputManager:
         joy_throttle = 0.0
         joy_active = False
         steering = 0.0
+        sidle = 0.0
         
         # Obsługa Joysticka
 # Obsługa Joysticka
@@ -105,17 +106,100 @@ class InputManager:
             try:
                 joy = self.joysticks[0]
                 
+            
+
+                # for i in range(joy.get_numaxes()):
+                #     val = joy.get_axis(i)
+                #     print(f"Axis {i}: {val:.3f}")
+                # print(joy.get_guid())
+
                 # Przekazujemy limit ze strzałek do stanu aplikacji
                 app_state.current_speed_limit = self.pad_max_limit
                 
                 # --- NOWY KOD: Obsługa awaryjnego hamowania L2 + R2 ---
                 l2_pressed = False
                 r2_pressed = False
+
+                if joy.get_guid() == config.LOGITECH_GUID: #0300ed156d04000015c2000010010000
+                    # print("logitech", flush=True)
+                    #axis 2 - steering
+                    #axis 1 - joy throttle
+                    #axis 0 - sidle
+                    #axis 3 - max speed
+                    axis0 = joy.get_axis(0)
+                    axis1 = joy.get_axis(1)
+                    axis2 = joy.get_axis(2)
+                    axis3 = joy.get_axis(3)
+                    if abs(axis2) > config.JOYSTICK_DEADZONE:
+                        steering = axis2
+                    else:
+                        steering = 0
+
+                    if abs(axis1) > config.JOYSTICK_DEADZONE:
+                        joy_throttle = axis1
+                    else:
+                        joy_throttle = 0
+                    if abs(axis0) > config.JOYSTICK_DEADZONE:
+                        sidle = axis0
+                    else:
+                        sidle = 0
+                else:
+                    # print("HEY!", flush=True)
+                    axis0 = joy.get_axis(0)
+                    axis1 = joy.get_axis(1)
+                    axis2 = joy.get_axis(2)
+                    axis3 = joy.get_axis(3)
+
+                    
+                    if app_state.swap_axis:
+
+                        if abs(axis2) > config.JOYSTICK_DEADZONE:
+                            steering = axis2
+                        else:
+                            steering = 0
+                    else:
+                        if abs(axis3) > config.JOYSTICK_DEADZONE:
+                            steering = axis3
+                        else:
+                            steering = 0
+
+                    if abs(axis1) > config.JOYSTICK_DEADZONE:
+                        joy_throttle = -axis1
+                    else:
+                        joy_throttle = 0
+                    if abs(axis0) > config.JOYSTICK_DEADZONE:
+                        sidle = -axis0
+                    else:
+                        sidle = 0
                 
-                # Sprawdzenie osi analogowych (L2=4, R2=5) -> Wartości osi rosną od -1 do 1
-                if joy.get_numaxes() > 5:
-                    if joy.get_axis(2) > 0.5: l2_pressed = True
-                    if joy.get_axis(5) > 0.5: r2_pressed = True
+
+
+                print("HOY!", flush=True)
+                print(f"Throttle: {joy_throttle}, Sidle {sidle}, Steering {steering}",flush=True)
+
+
+                # Titan Logitech 0300443e6d0400001fc2000005030000
+                    # axis 0 sidle
+                    # axis 1 throttle
+                    # axis 3 steering
+                    #         
+                
+                # Xbox wireless 050018dc5e040000130b000000006800
+                    #axis 0 sidle
+                    #axis 1 throttle
+                    #axis 2 steering
+
+                # xbox usb 0300443e6d0400001fc2000005030000 - steam
+                #          0300f5a35e040000120b000015050000 - no steam
+                    # axis 0 sidle
+                    # axis 1 throttle
+                    # axis 3 steering
+
+
+                # # Sprawdzenie osi analogowych (L2=4, R2=5) -> Wartości osi rosną od -1 do 1
+                # if joy.get_numaxes() > 5:
+                #     if joy.get_axis(2) > 0.5: l2_pressed = True
+                #     if joy.get_axis(5) > 0.5: r2_pressed = True
                 
                 # Awaryjne zabezpieczenie, gdyby system widział triggery jako przyciski (6 i 7)
                 if joy.get_numbuttons() > 7:
@@ -130,27 +214,31 @@ class InputManager:
                         app_state.trigger_ebrake_cmd = True
                         app_state.log("!!! HAMOWANIE AWARYJNE (L2+R2) !!!")
                 
-                # Gaz (Axis 1 - lewa gałka pionowo)
-                axis1 = -joy.get_axis(1)
-                if abs(axis1) > config.JOYSTICK_DEADZONE:
-                    joy_throttle = axis1 * app_state.current_speed_limit
-                    joy_active = True
+                # # Gaz (Axis 1 - lewa gałka pionowo)
+                # axis1 = -joy.get_axis(1)
+                # if abs(axis1) > config.JOYSTICK_DEADZONE:
+                #     joy_throttle = axis1 * app_state.current_speed_limit
+                #     joy_active = True
                 
-                # Skręt (Axis 5 lub 2 - zależy czy sterownik PC czy bezpośrednio konsola)
-                if joy.get_numaxes() > config.STEERING_AXIS_INDEX:
-                    steering = joy.get_axis(config.STEERING_AXIS_INDEX)
-                elif joy.get_numaxes() > 2:
-                    steering = joy.get_axis(2)
+                # # Skręt (Axis 5 lub 2 - zależy czy sterownik PC czy bezpośrednio konsola)
+                # if joy.get_numaxes() > config.STEERING_AXIS_INDEX:
+                #     steering = joy.get_axis(config.STEERING_AXIS_INDEX)
+                # elif joy.get_numaxes() > 2:
+                #     steering = joy.get_axis(2)
                     
-            except Exception:
+            except Exception as e:
+                print(f"INPUT CRASHED WITH ERROR: {e}", flush=True)
                 pass
         else:
             app_state.current_speed_limit = self.key_max_limit
 
         # Wybór źródła (Joystick vs Klawiatura)
-        if joy_active:
-            app_state.target_rps = joy_throttle
+        if self.joysticks:
+            app_state.target_rps = joy_throttle * app_state.current_speed_limit
+            app_state.sidle_val = sidle * app_state.current_speed_limit
         else:
             app_state.target_rps = self.key_throttle * app_state.current_speed_limit
             
-        app_state.steering_val = steering
+        app_state.steering_val = steering * app_state.current_speed_limit
+        
+        print( f"terget_rps: {app_state.target_rps}, joy_throttle: {joy_throttle}, joy_active: {joy_active}", flush=True)

@@ -59,10 +59,12 @@ class AppState:
         # Dane sterujące
         self.target_rps = 0.0
         self.steering_val = 0.0
+        self.sidle_val = 0.0
         self.current_speed_limit = 10.0
         
         # --- NOWE ZMIENNE DLA TRYBÓW JAZDY ---
         self.drive_mode = 1           # 1: Normalny, 2: Obrót w miejscu
+        self.swap_axis = False
         self.mode_switch_time = 0.0   # Czas ostatniej zmiany trybu (do opóźnienia)
         # ------------------------------------
         self.ebrake_active = False

@@ -111,35 +111,41 @@ class MqttManager:
             v = round(self.state.target_rps, 3)
             s = round(self.state.steering_val, 3)
             s = 0.0 if abs(s) < 0.25 else s
+
             
+            
+            # 1. Deklaracja pustej zmiennej - to usuwa czerwone podkreślenie!
             payload = None 
                          
-# ===================================================
-            # TRYB 1: JAZDA NORMALNA (Ackermann 4WS)
+            # ===================================================
+            # TRYB 1: JAZDA NORMALNA (4WS)
             # ===================================================
             if getattr(self.state, 'drive_mode', 1) == 1:
-                L = 0.9  
-                W = 0.845  
+
+                motorConfiguration = calculateMotorConfiguration(self.state.target_rps,self.state.sidle_val,self.state.steering_val)
                 
-                # 1. Zwykłe obliczenia Ackermanna (BEZ s = -s wcześniej!)
-                fl_rad = math.atan((s * L) / (2 + s * W))
-                fr_rad = math.atan((s * L) / (2 - s * W))
-                rl_rad = -fl_rad
-                rr_rad = -fr_rad
+                # L = 0.9  
+                # W = 0.845  
+                
+                # # 1. Zwykłe obliczenia Ackermanna (BEZ s = -s wcześniej!)
+                # fl_rad = math.atan((s * L) / (2 + s * W))
+                # fr_rad = math.atan((s * L) / (2 - s * W))
+                # rl_rad = -fl_rad
+                # rr_rad = -fr_rad
 
                 
 
                 payload = {
                     "eventType": "propulsion",
                     "velocity": {
-                        "fl_speed": -v,
-                        "rl_speed": v,
-                        "fr_speed": -v,
-                        "rr_speed": -v,
-                        "fl_rad": fl_rad,
-                        "rl_rad": rl_rad,
-                        "fr_rad": fr_rad,
-                        "rr_rad": rr_rad
+                        "fl_speed": motorConfiguration['fl']['speed'],
+                        "rl_speed": motorConfiguration['rl']['speed'],
+                        "fr_speed": motorConfiguration['fr']['speed'],
+                        "rr_speed": motorConfiguration['fl']['speed'],
+                        "fl_rad": motorConfiguration['fl']['angle'],
+                        "rl_rad": motorConfiguration['rl']['angle'],
+                        "fr_rad": motorConfiguration['fr']['angle'],
+                        "rr_rad": motorConfiguration['rr']['angle']
                     }
                 }
 

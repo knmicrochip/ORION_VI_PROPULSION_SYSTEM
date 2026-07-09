@@ -22,7 +22,7 @@ import config
 from comms import MqttManager
 from inputs import InputManager
 from utils import AppState
-
+from controller import calculateMotorConfiguration
 
 class DashboardGUI:
     def __init__(self, root, app_state, input_manager, mqtt_manager):
@@ -79,29 +79,42 @@ class DashboardGUI:
         # Pobranie danych ze stanu aplikacji
         mode = getattr(self.state, 'drive_mode', 1)
         s = self.state.steering_val
-        s = 0.0 if abs(s) < 0.25 else s
+        motorConfiguration = calculateMotorConfiguration(self.state.target_rps,self.state.sidle_val,self.state.steering_val)
+
         
-        # Obliczanie kątów w oparciu o kinematykę Ackermanna
+        # Obliczanie kątów w oparciu o kinematykę Swerve Drive
 # Obliczanie kątów w oparciu o kinematykę Ackermanna
         if mode == 1:
-            L, W = 1.0, 1.0
-            fl = math.atan((s * L) / (2 + s * W))
-            fr = math.atan((s * L) / (2 - s * W))
-            rl = -fl
-            rr = -fr
-            
-            # Odwracamy gotowe kąty dla rysunku
-            fl, fr, rl, rr = -fl, -fr, -rl, -rr
-        else: # Tryb 2: Obrót (X-turn) # Tryb 2: Obrót (X-turn)
+            # fl, fr, rl, rr = s, s, -s, -s
+            # fl_speed = -motorConfiguration.fl.speed,
+            # rl_speed = motorConfiguration.rl.speed,
+            # fr_speed = -motorConfiguration.fr.speed,
+            # rr_speed = -motorConfiguration.fl.speed,
+            fl = motorConfiguration['fl']['angle']
+            rl = motorConfiguration['rl']['angle']
+            fr = motorConfiguration['fr']['angle']
+            rr = motorConfiguration['rr']['angle']
+            # print(f"{fl},{rl},{fr},{rr}")
+
+            fl_speed = motorConfiguration['fl']['speed']
+            fr_speed = motorConfiguration['fr']['speed']
+            rl_speed = motorConfiguration['rl']['speed']
+            rr_speed = motorConfiguration['rr']['speed']
+
+        else: # Tryb 2: Obrót (X-turn)
             angle = 0.8
             fl, fr, rl, rr = -angle, angle, angle, -angle
+            fl_speed = 0
+            fr_speed = 0
+            rl_speed = 0
+            rr_speed = 0
             
         # Rysowanie korpusu
         self.rover_canvas.create_rectangle(cx-40, cy-70, cx+40, cy+70, fill="#222", outline="#444")
         
-        # Rysowanie kół (funkcja pomocnicza do obrotu)
-        def draw_wheel(x, y, rad_angle, color):
-            w, h = 20, 45
+    # Funkcja pomocnicza do rysowania koła, strzałki i tekstu prędkości
+        def draw_wheel(x, y, rad_angle, speed, base_color):
+            w, h = 14, 30
             points = [(-w/2, -h/2), (w/2, -h/2), (w/2, h/2), (-w/2, h/2)]
             rotated = []
             for px, py in points:
@@ -109,15 +122,38 @@ class DashboardGUI:
                 rx = x + (px * math.cos(rad_angle) - py * math.sin(-rad_angle))
                 ry = y + (px * math.sin(-rad_angle) + py * math.cos(rad_angle))
                 rotated.extend([rx, ry])
-            self.rover_canvas.create_polygon(rotated, fill=color, outline="white")
+                
+            # Rysowanie opony
+            self.rover_canvas.create_polygon(rotated, fill=base_color, outline="#999999")
+            
+            # Obliczanie wektora strzałki (zależnej od kąta skrętu i znaku prędkości)
+            # Założenie: dodatnia prędkość porusza koło "w przód" (względem jego obrotu)
+            arrow_length = max(15, min(abs(speed/4) * 10, self.state.current_speed_limit*2)) # Skalowanie długości strzałki (min 15px, max 40px)
+            
+            # Kierunek strzałki zależy od znaku prędkości
+            direction = 1 if speed >= 0 else -1
+            
+            # Obliczenie punktu końcowego strzałki (kąt modyfikowany dla osi Y w dół w Tkinter)
+            dx = -arrow_length * math.sin(rad_angle) * direction
+            dy = -arrow_length * math.cos(rad_angle) * direction
+            
+            arrow_color = "#FFFF00" if speed >= 0 else "#FF3333"
+            
+            # Rysuj strzałkę tylko wtedy, gdy prędkość nie jest zerem
+            if abs(speed) > 0.05:
+                self.rover_canvas.create_line(x, y, x + dx, y + dy, fill=arrow_color, width=4, arrow="last")
+            
+            # Wyświetlanie wartości tekstowej prędkości obok koła
+            # text_offset_x = 25 if x > cx else -25
+            # self.rover_canvas.create_text(x + text_offset_x, y, text=f"{speed:.1f}", fill="cyan", font=("Arial", 9, "bold"))
 
-        wheel_color = "#00ff00" if mode == 1 else "#FFAA00"
+        wheel_color = "#00aa00" if mode == 1 else "#FFAA00"
         
-        # Rozstaw kół na rysunku
-        draw_wheel(cx-60, cy-50, fl, wheel_color) # FL
-        draw_wheel(cx+60, cy-50, fr, wheel_color) # FR
-        draw_wheel(cx-60, cy+50, rl, wheel_color) # RL
-        draw_wheel(cx+60, cy+50, rr, wheel_color) # RR
+        # Rozstaw kół na rysunku (Przekazywanie współrzędnych, kątów oraz prędkości)
+        draw_wheel(cx-60, cy-50, fl, fl_speed, wheel_color) # FL
+        draw_wheel(cx+60, cy-50, fr, fr_speed, wheel_color) # FR
+        draw_wheel(cx-60, cy+50, rl, rl_speed, wheel_color) # RL
+        draw_wheel(cx+60, cy+50, rr, rr_speed, wheel_color) # RR
 
     def _check_connection(self, host, port=None):
         """
@@ -230,6 +266,16 @@ class DashboardGUI:
         
         # tk.Button(self.joy_container, text="Quit!", command=self.Close, 
         #             bg=config.BTN_RESET_COLOR, fg="white", font=("Arial", 10, "bold")).pack(fill="x", pady=(0,10))
+
+        self.invert_btn = tk.Button(
+            self.joy_container, 
+            text="⇄ SWAP AXIS ⇄", 
+            command=self.toggle_swap_axis, 
+            bg="#595940", 
+            fg="white", 
+            font=("Arial", 10, "bold")
+        )
+        self.invert_btn.pack(fill="x", pady=(0, 10))
         
         tk.Button(self.joy_container, text="⟳ RESET JOYSTICK", command=self.refresh_joysticks, 
                     bg=config.BTN_RESET_COLOR, fg="white", font=("Arial", 10, "bold")).pack(fill="x", pady=(0,10))
@@ -273,8 +319,17 @@ class DashboardGUI:
         self.lbl_target = tk.Label(labels_frame, text="Target: 0.0 RPS", bg=config.BG_COLOR, fg="white", font=("Arial", 20, "bold"))
         self.lbl_target.pack(anchor="w")
         
-        self.lbl_steering = tk.Label(labels_frame, text="Steering: 0.00", bg=config.BG_COLOR, fg="#FFAA00", font=("Arial", 14))
-        self.lbl_steering.pack(anchor="w", pady=(5, 0))
+        # 1. Create a container frame for this specific row
+        steering_row_frame = tk.Frame(labels_frame, bg=config.BG_COLOR)
+        steering_row_frame.pack(fill="x", pady=(5, 0))
+
+        # 2. Create and pack the steering label on the LEFT
+        self.lbl_steering = tk.Label(steering_row_frame, text="Steering: 0.00", bg=config.BG_COLOR, fg="#FFAA00", font=("Arial", 14))
+        self.lbl_steering.pack(side="left", anchor="w")
+
+        # 3. Create and pack the sidle label on the RIGHT (Notice the unique variable name!)
+        self.lbl_sidle = tk.Label(steering_row_frame, text="Sidle: 0.00", bg=config.BG_COLOR, fg="#FFAA00", font=("Arial", 14))
+        self.lbl_sidle.pack(side="right", anchor="e")
         
         # --- (Reszta funkcji zostaje bez zmian) ---
         self.odrive_widgets = {}
@@ -361,12 +416,12 @@ class DashboardGUI:
         # padx=(15, 5) tworzy odstęp po lewej stronie (oddziela prąd od prędkości m/s)
         widgets["lbl_servo_current"].pack(side="left", padx=(15, 5))
 
-        widgets["lbl_servo_angle"] = tk.Label(
-            speed_container, text="0.0°",
-            bg=config.BG_COLOR, fg="#00FFFF",  # Kolor błękitny
-            font=("Consolas", 12)
-        )
-        widgets["lbl_servo_angle"].pack(side="left")
+        # widgets["lbl_servo_angle"] = tk.Label(
+        #     speed_container, text="0.0°",
+        #     bg=config.BG_COLOR, fg="#00FFFF",  # Kolor błękitny
+        #     font=("Consolas", 12)
+        # )
+        # widgets["lbl_servo_angle"].pack(side="left")
         
         # --- Position ---
         widgets["lbl_pos"] = tk.Label(
@@ -583,6 +638,8 @@ class DashboardGUI:
         # ... (oryginalny kod: self.lbl_target.config(text=f"Target... itd.) ...
         self.lbl_target.config(text=f"Target: {self.state.target_rps:.2f} RPS")
         self.lbl_steering.config(text=f"Steering: {self.state.steering_val:.2f}")
+        self.lbl_sidle.config(text=f"Sidle: {self.state.sidle_val:.2f}")
+
         self.lbl_mqtt_status.config(text=self.state.mqtt_status_text)
         # --- AKTUALIZACJA TRYBU JAZDY ---
         mode = getattr(self.state, 'drive_mode', 1) # Pobranie trybu z utils.AppState
@@ -603,39 +660,10 @@ class DashboardGUI:
             widgets["lbl_kmh"].config(text=f"{speed_kmh:.1f} km/h")
             widgets["lbl_ms"].config(text=f"{speed_ms:.2f} m/s")
             widgets["lbl_pos"].config(text=f"Pozycja: {odrv.measured_position:.2f} obr")
-            
-            # --- AKTUALIZACJA SERWO ---
-            # Obliczenie kąta w stopniach. Twój docelowy zakres w ESP32 to 1.0 radian (ok 57.3 st.)
-# --- AKTUALIZACJA SERWO ---
-            # --- AKTUALIZACJA SERWO ---
-            s = self.state.steering_val
-            s = 0.0 if abs(s) < 0.25 else s
-            L, W = 1.0, 1.0
-            
-            angle_rad = 0.0
-            if mode == 1:
-                # ODrive id: "00"=FL, "10"=RL, "01"=FR, "11"=RR
-                if odrive_id == "00":
-                    angle_rad = math.atan((s * L) / (2 + s * W))
-                elif odrive_id == "10":
-                    angle_rad = -math.atan((s * L) / (2 + s * W))
-                elif odrive_id == "01":
-                    angle_rad = math.atan((s * L) / (2 - s * W))
-                elif odrive_id == "11":
-                    angle_rad = -math.atan((s * L) / (2 - s * W))
-                
-                # Odwracamy kierunek po poprawnym obliczeniu Ackermanna
-                angle_rad = -angle_rad
-            else:
-                # Stałe kąty dla trybu X-Turn (Obrót w miejscu)
-                if odrive_id in ["00", "11"]: angle_rad = 1.0
-                elif odrive_id in ["01", "10"]: angle_rad = -1.0
-                
-                
-            angle_deg = math.degrees(angle_rad)
-            
+
+
             widgets["lbl_servo_current"].config(text=f"{odrv.servo_current:.2f} A")
-            widgets["lbl_servo_angle"].config(text=f"{angle_deg:.1f}°")
+
 
             trip_turns = odrv.measured_position - odrv.start_position_offset
 
@@ -732,3 +760,14 @@ class DashboardGUI:
         # ZMIANA: Dopasowanie czcionek do nowego rozmiaru
         self.gauge_canvas.create_text(cx, cy-15, text=f"{val:.1f}", fill="white", font=("Arial", 28, "bold"))
         self.gauge_canvas.create_text(cx, cy+20, text=f"Max Limit: {self.state.current_speed_limit:.1f} RPS", fill="#888", font=("Arial", 10))
+
+
+    def toggle_swap_axis(self):
+        """Toggles the invert_axis flag and updates the button appearance."""
+
+        self.state.swap_axis = not self.state.swap_axis
+        
+        if self.state.swap_axis:
+            self.invert_btn.config(text="SWAP AXIS: [A]", bg="#AA8800") 
+        else:
+            self.invert_btn.config(text="SWAP AXIS: [B]", bg="#91ab0f")
