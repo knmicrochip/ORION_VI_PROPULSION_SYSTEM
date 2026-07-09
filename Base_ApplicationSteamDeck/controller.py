@@ -11,8 +11,8 @@
 #      ┌─────────────┼─────────────┐         
 #      │             │             │         
 #      │             │             │         
-#      │             │             │         
-#   y  │           ω⊙│             │         
+#      │          𜰰𜰱 │             │         
+#   y  │          🭭ω⊙│             │         
 # ◄────┼─────────────┘             │WHEELBASE
 #      │                           │         
 #      │                           │         
@@ -95,9 +95,9 @@ def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed):
 
     clamped = clampToFeasible(advance_speed,sidle_speed,rotation_speed)
     
-    # advance_speed = clamped[0]
-    # sidle_speed = clamped[1]
-    # rotation_speed = clamped[2]
+    advance_speed = clamped[0]
+    sidle_speed = clamped[1]
+    rotation_speed = clamped[2]
 
     # A = sidle_speed - rotation_speed * WHEELBASE
     # B = sidle_speed + rotation_speed * WHEELBASE
