@@ -8,9 +8,9 @@ def test_pure_forward():
     assert isFeasible(1.0, 0.0, 0.0) is True
 
 # I am not sure if implementation should include rotation in place
-# def test_pure_rotation():
-#     """Rotating in place should be feasible for a 4WS vehicle."""
-#     assert isFeasible(0.0, 0.0, 0.5) is True
+def test_zero_sidle():
+    """Rotating in place should be feasible for a 4WS vehicle."""
+    assert isFeasible(1.0, 0.0, 1.0) is False
 
 def test_impossible_sidle():
     """
@@ -73,7 +73,7 @@ def test_clamp_extreme_rotation():
 def test_returns_all_wheels():
     result = calculateMotorConfiguration(0.0, 0.0, 0.0)
 
-    assert set(result.keys()) == {"FR", "FL", "RL", "RR"}
+    assert set(result.keys()) == {"fr", "fl", "rl", "rr"}
 
     for wheel in result.values():
         assert "speed" in wheel

@@ -22,7 +22,7 @@ import config
 from comms import MqttManager
 from inputs import InputManager
 from utils import AppState
-from controller import calculateMotorConfiguration
+from controller import calculateMotorConfiguration,isFeasible
 
 class DashboardGUI:
     def __init__(self, root, app_state, input_manager, mqtt_manager):
@@ -78,9 +78,14 @@ class DashboardGUI:
         # Pobranie danych ze stanu aplikacji
         # Pobranie danych ze stanu aplikacji
         mode = getattr(self.state, 'drive_mode', 1)
-        s = self.state.steering_val
+        # s = self.state.steering_val
+        debug_indicator = isFeasible(self.state.target_rps,self.state.sidle_val,self.state.steering_val)
         motorConfiguration = calculateMotorConfiguration(self.state.target_rps,self.state.sidle_val,self.state.steering_val)
 
+        if debug_indicator:
+            self.valid_motor_config.config(text="admissible",fg="#11EE11")
+        else:
+            self.valid_motor_config.config(text="INVALID",fg="#EE1111")
         
         # Obliczanie kątów w oparciu o kinematykę Swerve Drive
 # Obliczanie kątów w oparciu o kinematykę Ackermanna
@@ -137,7 +142,7 @@ class DashboardGUI:
             dx = -arrow_length * math.sin(rad_angle) * direction
             dy = -arrow_length * math.cos(rad_angle) * direction
             
-            arrow_color = "#FFFF00" if speed >= 0 else "#FF3333"
+            arrow_color = "#FFFF00" if (abs(rad_angle) <= 0.785 or abs(rad_angle) >= 3.141-0.785) else "#FF1111"
             
             # Rysuj strzałkę tylko wtedy, gdy prędkość nie jest zerem
             if abs(speed) > 0.05:
@@ -287,10 +292,15 @@ class DashboardGUI:
         tk.Label(instr, text="[W]/[S] - Przód/Tył | [R]/[F] - Limit", bg=config.BG_COLOR, fg="white", font=("Arial", 10, "bold")).pack()
         tk.Label(instr, text="[ESC] - Zamknij fullscreen", bg=config.BG_COLOR, fg="#888").pack()
 
+
+
         # --- NOWA SEKCJA: WIZUALIZACJA PODWOZIA (Lewy dolny panel) ---
         self.preview_frame = tk.LabelFrame(self.left_frame, text="Podgląd Skrętu Kół", 
                                            bg=config.BG_COLOR, fg=config.FG_COLOR)
         self.preview_frame.pack(side="top", fill="both", expand=True, pady=10)
+
+        self.valid_motor_config = tk.Label(self.preview_frame, text="Waiting for input", bg=config.BG_COLOR, fg="#FFFFFF", font=("Arial", 14))
+        self.valid_motor_config.pack(anchor="n")
 
         # ZMIANA: Wysokość canvasu podglądu z 250 na 160
         self.rover_canvas = tk.Canvas(self.preview_frame, bg="#111111", 

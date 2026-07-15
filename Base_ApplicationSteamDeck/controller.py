@@ -8,7 +8,7 @@
 #                    ▲                       
 #                    │x                      
 #                    │                       
-#      ┌─────────────┼─────────────┐         
+#     1┌─────────────┼─────────────┐4       
 #      │             │             │         
 #      │             │             │         
 #      │          𜰰𜰱 │             │         
@@ -18,7 +18,7 @@
 #      │                           │         
 #      │                           │         
 #      │  TRACK                    │         
-#      └───────────────────────────┘         
+#     2└───────────────────────────┘3        
 
 from math import tan,atan2,sqrt,pi
 
@@ -31,18 +31,25 @@ WIDTH_RIGHT = TRACK/2.0
 LENGHT_FRONT = WHEELBASE/2.0
 LENGHT_REAR = WHEELBASE/2.0
 
-MAX_ANGLE = pi/4 # 1/4 PI
-MIN_ANGLE = pi/4
+MAX_ANGLE = 0.785 # 1/4 PI
+MIN_ANGLE = -0.785
+
+
+#       ↗         ↖
+# 1, 2, 3, 4,   5, 6, 7, 8
+#rr,rl,fl,fr,  rl,rr,fr,fl
+#           ,  rr,        
+
 
 B_MATRIX = [
     [-tan(MAX_ANGLE),1,(LENGHT_FRONT + WIDTH_LEFT * tan(MAX_ANGLE))], # wheel 1 max
-    [-tan(MAX_ANGLE),1,-(LENGHT_REAR - WIDTH_LEFT * tan(MAX_ANGLE))], #  wheel 2 max
-    [-tan(MAX_ANGLE),1,-(LENGHT_REAR + WIDTH_RIGHT * tan(MAX_ANGLE))],
+    [-tan(MAX_ANGLE),1,(-LENGHT_REAR + WIDTH_LEFT * tan(MAX_ANGLE))], #  wheel 2 max
+    [-tan(MAX_ANGLE),1,(-LENGHT_REAR - WIDTH_RIGHT * tan(MAX_ANGLE))],
     [-tan(MAX_ANGLE),1,(LENGHT_FRONT - WIDTH_RIGHT * tan(MAX_ANGLE))],
-    [-tan(MIN_ANGLE),-1,-(LENGHT_FRONT + WIDTH_LEFT * tan(MIN_ANGLE))], # wheel 1 min
-    [-tan(MIN_ANGLE),-1,(LENGHT_REAR - WIDTH_LEFT * tan(MIN_ANGLE))],
-    [-tan(MIN_ANGLE),-1,(LENGHT_REAR + WIDTH_RIGHT * tan(MIN_ANGLE))],
-    [-tan(MIN_ANGLE),-1,-(LENGHT_FRONT - WIDTH_RIGHT * tan(MIN_ANGLE))],
+    [tan(MIN_ANGLE),-1,(LENGHT_FRONT + WIDTH_LEFT * tan(MIN_ANGLE))], # wheel 1 min
+    [tan(MIN_ANGLE),-1,(-LENGHT_REAR + WIDTH_LEFT * tan(MIN_ANGLE))],
+    [tan(MIN_ANGLE),-1,(-LENGHT_REAR - WIDTH_RIGHT * tan(MIN_ANGLE))],
+    [tan(MIN_ANGLE),-1,(LENGHT_FRONT - WIDTH_RIGHT * tan(MIN_ANGLE))],
 ]
 
     #TODO good testing 
@@ -50,22 +57,30 @@ def isFeasible(advance_speed,sidle_speed,rotation_speed):
     # there is an assumption made here that simplifies logic but it works only for angles smaller then 0.5 PI
     # it also removes rotation in place
     is_valid = True
-    previous = 0
+    sign = 0
+    first = True
+    rotation_speed = rotation_speed*2 #WTF?
     for plane in B_MATRIX:
         tmp = plane[0]*advance_speed + plane[1]*sidle_speed + plane[2]*rotation_speed
-        if tmp == 0:
-            # print("plane of discountinuty")
-            pass
-        elif tmp < 0:
-            # print("behind the plane")
-            if(previous > 0):
+        print(f"{tmp:.2f}, ",end='\t')
+        # print(f"{plane[0]*advance_speed:.2f} {plane[1]*sidle_speed:.2f} {plane[2]*rotation_speed:.2f}")
+        if first:
+            first=False
+            if tmp < 0:
+                sign = -1
+            elif tmp > 0:
+                sign = 1
+            else:
+                first=True
+        else:
+            if tmp < 0 and sign == 1:
                 is_valid = False
-            previous = -1
-        elif tmp > 0:
-            # print("ahead of plane")
-            if(previous < 0):
+            elif tmp > 0 and sign == -1:
                 is_valid = False
-            previous = 1
+
+
+    print(f" {is_valid}",flush=True)
+    # get_zone_index(advance_speed,sidle_speed,rotation_speed)
     return is_valid
 
 def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
