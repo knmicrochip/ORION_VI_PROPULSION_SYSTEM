@@ -241,4 +241,7 @@ class InputManager:
             
         app_state.steering_val = steering * app_state.current_speed_limit
         
-        print( f"terget_rps: {app_state.target_rps}, joy_throttle: {joy_throttle}, joy_active: {joy_active}", flush=True)
+        
+        
+
+        # print( f"terget_rps: {app_state.target_rps}, joy_throttle: {joy_throttle}, joy_active: {joy_active}", flush=True)

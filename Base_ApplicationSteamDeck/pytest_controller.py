@@ -1,6 +1,7 @@
 import pytest
 from math import sqrt,pi
-from controller import isFeasible, clampToFeasible, calculateMotorConfiguration
+from controller import isFeasible, clampToFeasible, calculateMotorConfiguration, isFeasibleFromMotorConfiguration, calculateMotorConfigurationClampless
+import random
 
 def test_pure_forward():
     """Moving straight ahead should always be feasible."""
@@ -22,6 +23,50 @@ def test_impossible_sidle():
 def test_zero_velocity():
     """Standing still is technically feasible."""
     assert isFeasible(0.0, 0.0, 0.0) is True
+
+def test_random_feasible():
+    """
+    Losuje 1000 liczb, sprawdza isFeasible() oraz liczy kąt.
+    """
+    random.seed(2137)
+
+    for i in range(1000):
+        cmd_vx, cmd_vy, cmd_w = random.uniform(-1, 1),random.uniform(-1, 1),random.uniform(-1, 1)
+
+        assert isFeasible(cmd_vx, cmd_vy, cmd_w) == isFeasibleFromMotorConfiguration(cmd_vx, cmd_vy, cmd_w)
+
+def test_known_mismatch():
+    # the 20 known mismatched points (isFeasible=True, fromMotor=False)
+    failing_points = [
+        (-0.4822, 0.0225, -0.1901),
+        (0.5676, -0.3934, -0.0468),
+        (0.8462, 0.0812, -0.2174),
+        (0.8995, 0.1594, -0.0989),
+        (0.8200, 0.0684, 0.3612),
+        (-0.9466, 0.2700, 0.2127),
+        (-0.4986, 0.1936, -0.1154),
+        (-0.6504, -0.0567, -0.1802),
+        (0.7508, 0.1363, -0.1712),
+        (0.7678, -0.0108, -0.3759),
+        (0.9736, -0.1964, 0.3570),
+        (-0.9953, 0.6455, 0.0567),
+        (-0.8373, -0.4506, -0.0940),
+        (-0.9187, 0.3620, 0.1167),
+        (-0.4209, -0.2104, 0.0970),
+        (-0.9035, -0.6408, 0.0461),
+        (-0.8583, -0.1937, -0.3430),
+        (0.8060, -0.0968, 0.3538),
+        (0.8341, -0.3551, -0.0031),
+        (0.8116, -0.5878, 0.0708),
+    ]
+    
+    for vx, vy, w in failing_points:
+        result = calculateMotorConfigurationClampless(vx, vy, w)
+        print(f"{result}")
+        assert isFeasible(vx, vy, w) 
+        # print(f"vx={vx:+.4f} vy={vy:+.4f} w={w:+.4f}  isFeasible={result}")
+
+
 
 def test_clamp_already_feasible():
     """If a speed profile is already feasible, it shouldn't radically change, 
@@ -93,6 +138,9 @@ def test_forward_motion():
     for wheel in result.values():
         assert wheel["speed"] == pytest.approx(1.0)
         assert wheel["angle"] == pytest.approx(0.0)
+
+
+
 
 
 # def test_sideways_motion():
