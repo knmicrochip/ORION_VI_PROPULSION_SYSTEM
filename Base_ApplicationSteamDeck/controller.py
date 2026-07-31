@@ -44,14 +44,14 @@ MIN_ANGLE = -0.785
 
 
 B_MATRIX = [
-    [-tan(MAX_ANGLE),1,(LENGHT_FRONT + WIDTH_LEFT * tan(MAX_ANGLE))], # wheel 1 max
-    [-tan(MAX_ANGLE),1,(-LENGHT_REAR + WIDTH_LEFT * tan(MAX_ANGLE))], #  wheel 2 max
-    [-tan(MAX_ANGLE),1,(-LENGHT_REAR - WIDTH_RIGHT * tan(MAX_ANGLE))],
-    [-tan(MAX_ANGLE),1,(LENGHT_FRONT - WIDTH_RIGHT * tan(MAX_ANGLE))],
-    [tan(MIN_ANGLE),-1,(LENGHT_FRONT + WIDTH_LEFT * tan(MIN_ANGLE))], # wheel 1 min
-    [tan(MIN_ANGLE),-1,(-LENGHT_REAR + WIDTH_LEFT * tan(MIN_ANGLE))],
-    [tan(MIN_ANGLE),-1,(-LENGHT_REAR - WIDTH_RIGHT * tan(MIN_ANGLE))],
-    [tan(MIN_ANGLE),-1,(LENGHT_FRONT - WIDTH_RIGHT * tan(MIN_ANGLE))],
+    [-tan(MAX_ANGLE),1,2*(LENGHT_FRONT + WIDTH_LEFT * tan(MAX_ANGLE))], # wheel 1 max
+    [-tan(MAX_ANGLE),1,2*(-LENGHT_REAR + WIDTH_LEFT * tan(MAX_ANGLE))], #  wheel 2 max
+    [-tan(MAX_ANGLE),1,2*(-LENGHT_REAR - WIDTH_RIGHT * tan(MAX_ANGLE))],
+    [-tan(MAX_ANGLE),1,2*(LENGHT_FRONT - WIDTH_RIGHT * tan(MAX_ANGLE))],
+    [tan(MIN_ANGLE),-1,2*(LENGHT_FRONT + WIDTH_LEFT * tan(MIN_ANGLE))], # wheel 1 min
+    [tan(MIN_ANGLE),-1,2*(-LENGHT_REAR + WIDTH_LEFT * tan(MIN_ANGLE))],
+    [tan(MIN_ANGLE),-1,2*(-LENGHT_REAR - WIDTH_RIGHT * tan(MIN_ANGLE))],
+    [tan(MIN_ANGLE),-1,2*(LENGHT_FRONT - WIDTH_RIGHT * tan(MIN_ANGLE))],
 ]
 
 # counter = set()
