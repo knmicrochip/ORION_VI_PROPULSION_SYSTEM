@@ -106,15 +106,19 @@ def isFeasible(advance_speed,sidle_speed,rotation_speed):
 
 def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
     global lastValidVelocity
+    
     if isFeasible(advance_speed,sidle_speed,rotation_speed):
         lastValidVelocity = (advance_speed,sidle_speed,rotation_speed)
         return (advance_speed,sidle_speed,rotation_speed)
 
+    # return lastValidVelocity
+
     old_advance_speed = lastValidVelocity[0]
     old_sidle_speed = lastValidVelocity[1]
-    old_rotation_speed = lastValidVelocity[2]
+    old_rotation_speed = 2 * lastValidVelocity[2]
 
-
+    print("current:",(advance_speed,sidle_speed,rotation_speed))
+    print("old:",(old_advance_speed,old_sidle_speed,old_rotation_speed),isFeasible(old_advance_speed,old_sidle_speed,old_rotation_speed))
 
 
     clamp_candidates = []
@@ -123,6 +127,10 @@ def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
         
         # based on geogebra solution to 
         # Rozwiąż({x=x_{a}+(x_{a}-x_{b}) t,y=y_{a}+(y_{a}-y_{b}) t,z=z_{a}+(z_{a}-z_{b}) t,a x+b y+c z=0},{x,y,z,t})
+
+        #the ray is wrong
+
+
 
         dzielnik = (
             plane[0] * (advance_speed - old_advance_speed) +
@@ -151,25 +159,24 @@ def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
             -plane[1] * old_sidle_speed * rotation_speed
         ) / dzielnik
 
+        distance_cube = (old_advance_speed - new_advance_speed)**2 + (old_sidle_speed - new_sidle_speed)**2 + (old_rotation_speed - new_rotation_speed)**2
+
+        clamp_candidates.append((distance_cube,(new_advance_speed,new_sidle_speed,new_rotation_speed)))
 
 
 
-        if isFeasible(new_advance_speed,new_sidle_speed,new_rotation_speed):
-            return (new_advance_speed,new_sidle_speed,new_rotation_speed)
 
-
-
-    # print(clamp_candidates)
-    # if clamp_candidates:
-        # new_clamp = min(clamp_candidates) #python is crazy
-    # else:
-        # return (0,0,0)
+    print(clamp_candidates)
+    if clamp_candidates:
+        new_clamp = min(clamp_candidates) #python is crazy
+    else:
+        return (0,0,0)
 
 
 
 
     # calculateMotorConfigurationClampless(new_clamp[1][0],new_clamp[1][1],new_clamp[1][2])
-    # return new_clamp[1]
+    return new_clamp[1]
     return (0,0,0)
 
 
