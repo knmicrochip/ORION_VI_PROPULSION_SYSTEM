@@ -704,7 +704,7 @@ class DashboardGUI:
                     widgets["lbl_lag"].config(fg="red")
             # --- NOWY KOD: ALARM DŹWIĘKOWY (LAG > 1000 ms) ---
                 # --- NOWY KOD: ALARM DŹWIĘKOWY SUBPROCESS (LAG > 1000 ms) ---
-                if lag > 1000:
+                if lag > 3000:
                     current_time = time.time()
                     # Sprawdź, czy minęła co najmniej 1 sekunda od ostatniego alarmu
                     if current_time - self.state.last_alarm_time > 1.0:

@@ -5,6 +5,7 @@ import json
 import time
 import config
 from utils import AppState
+from controller import calculateMotorConfiguration
 
 class MqttManager:
     def __init__(self, app_state):
@@ -138,14 +139,14 @@ class MqttManager:
                 payload = {
                     "eventType": "propulsion",
                     "velocity": {
-                        "fl_speed": motorConfiguration['fl']['speed'],
+                        "fl_speed": -motorConfiguration['fl']['speed'],
                         "rl_speed": motorConfiguration['rl']['speed'],
-                        "fr_speed": motorConfiguration['fr']['speed'],
-                        "rr_speed": motorConfiguration['fl']['speed'],
-                        "fl_rad": motorConfiguration['fl']['angle'],
-                        "rl_rad": motorConfiguration['rl']['angle'],
-                        "fr_rad": motorConfiguration['fr']['angle'],
-                        "rr_rad": motorConfiguration['rr']['angle']
+                        "fr_speed": -motorConfiguration['fr']['speed'],
+                        "rr_speed": -motorConfiguration['fl']['speed'],
+                        "fl_rad": -motorConfiguration['fl']['angle'],
+                        "rl_rad": -motorConfiguration['rl']['angle'],
+                        "fr_rad": -motorConfiguration['fr']['angle'],
+                        "rr_rad": -motorConfiguration['rr']['angle']
                     }
                 }
 

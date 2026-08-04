@@ -136,11 +136,11 @@ class InputManager:
                         steering = 0
 
                     if abs(axis1) > config.JOYSTICK_DEADZONE:
-                        joy_throttle = axis1
+                        joy_throttle = -axis1
                     else:
                         joy_throttle = 0
                     if abs(axis0) > config.JOYSTICK_DEADZONE:
-                        sidle = axis0
+                        sidle = -axis0
                     else:
                         sidle = 0
                 else:
