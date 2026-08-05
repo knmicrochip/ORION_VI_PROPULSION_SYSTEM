@@ -1,9 +1,15 @@
+# Copyright 2026 ludrol
+# Licensed under MIT license
 
 # this is based on this paper:
 # 
 # Motion Planning and Control of an Overactuated 4-Wheel Drive with
 # Constrained Independent Steering (2025)
 # 
+
+
+
+
 
 #                    ▲                       
 #                    │x                      
@@ -20,10 +26,16 @@
 #      │  TRACK                    │         
 #     2└───────────────────────────┘3        
 
-from math import tan,atan2,sqrt,pi
+from math import tan,atan2,sqrt,pi,isclose
+from enum import Enum 
 
 
-lastValidVelocity = (0,0,0)
+class zones(Enum):
+    STOP = 0
+    FORWARD = 1
+    BACKWARD = 2
+
+RaycastVelocity = (0,0,0)
 
 TRACK = 0.85
 WHEELBASE = 0.90
@@ -35,6 +47,11 @@ LENGHT_REAR = WHEELBASE/2.0
 
 MAX_ANGLE = 0.785 # 1/4 PI #isFeasibleFromMotorConfiguration needs symmetry
 MIN_ANGLE = -0.785
+MAX_ANGLE_HIGH = pi/2
+MIN_ANGLE_HIGH = -pi/2
+
+NEAR_ZERO = 1e-09
+
 
 
 #       ↗         ↖
@@ -42,6 +59,20 @@ MIN_ANGLE = -0.785
 #rr,rl,fl,fr,  rl,rr,fr,fl
 #           ,  rr,        
 
+# todo how to be safe
+# check intent  to change the direction/zone
+    # check safety flag
+        # check if vel is 0
+            # set safe
+        # set vel 0 
+# if safe
+#   set raycast to zone according to intent
+#   
+
+# TODO:
+# 1. 
+# 
+# 
 
 B_MATRIX = [
     [-tan(MAX_ANGLE),1,2*(LENGHT_FRONT + WIDTH_LEFT * tan(MAX_ANGLE))], # wheel 1 max
@@ -101,21 +132,34 @@ def isFeasible(advance_speed,sidle_speed,rotation_speed):
     # get_zone_index(advance_speed,sidle_speed,rotation_speed)
     return is_valid
 
+def getZoneIntent(advance_speed,sidle_speed,rotation_speed):
+    if advance_speed > NEAR_ZERO:
+        return zones.FORWARD
+    elif advance_speed < -NEAR_ZERO:
+        return zones.BACKWARD
+    else:
+        return zones.STOP
+
+def isRoverStopped(state):
+    isStopped = True
+    for odrive_id, odrv in state.o_drives.items():
+        if abs(odrv.measured_velocity) > 1:
+            isStopped = False
+    return isStopped
 
         
 
 def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
-    global lastValidVelocity
+    global RaycastVelocity
     
     if isFeasible(advance_speed,sidle_speed,rotation_speed):
-        lastValidVelocity = (advance_speed,sidle_speed,rotation_speed)
         return (advance_speed,sidle_speed,rotation_speed)
 
     # return lastValidVelocity
 
-    old_advance_speed = lastValidVelocity[0]
-    old_sidle_speed = lastValidVelocity[1]
-    old_rotation_speed = 2 * lastValidVelocity[2]
+    old_advance_speed = RaycastVelocity[0]
+    old_sidle_speed = RaycastVelocity[1]
+    old_rotation_speed = 2 * RaycastVelocity[2]
 
     print("current:",(advance_speed,sidle_speed,rotation_speed))
     print("old:",(old_advance_speed,old_sidle_speed,old_rotation_speed),isFeasible(old_advance_speed,old_sidle_speed,old_rotation_speed))
@@ -185,7 +229,25 @@ def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
 
     # TODO normalize
     # TODO better tests
-def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed):
+def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed, state = None):
+
+    global RaycastVelocity
+
+    if state is not None:
+        intent = getZoneIntent(advance_speed,sidle_speed,rotation_speed)
+        if (intent
+            != 
+            getZoneIntent(RaycastVelocity[0],RaycastVelocity[1],RaycastVelocity[2])):
+            print(f"{intent} {getZoneIntent(RaycastVelocity[0],RaycastVelocity[1],RaycastVelocity[2])} {isRoverStopped(state)}")
+            if isRoverStopped(state) == True:
+                match intent:
+                    case zones.FORWARD: RaycastVelocity = (10,0,0)
+                    case zones.BACKWARD: RaycastVelocity = (-10,0,0)
+                    case zones.STOP: RaycastVelocity = (0,0,0)
+            else:
+                advance_speed,sidle_speed,rotation_speed = 0,0,0
+
+
 
     clamped = clampToFeasible(advance_speed,sidle_speed,rotation_speed)
     
@@ -207,17 +269,13 @@ def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed):
     C = sidle_speed - rotation_speed * TRACK
     D = sidle_speed + rotation_speed * TRACK
 
-    # print("\n--- DEBUG: calculateMotorConfiguration Input ---")
-    # print(f"Input Advance Speed:  {advance_speed}")
-    # print(f"Input Sidle Speed:    {sidle_speed}")
-    # print(f"Input Rotation Speed: {rotation_speed}")
-
     # return {
     # 	"fl":{"speed":sqrt(B**2 + C**2),"angle":atan2(B,C)},
     # 	"rl":{"speed":sqrt(B**2 + D**2),"angle":atan2(B,D)},
     # 	"rr":{"speed":sqrt(A**2 + D**2),"angle":atan2(A,D)},
     # 	"fr":{"speed":sqrt(A**2 + C**2),"angle":atan2(A,C)}
     # 	}
+
 
     configuration = {
         "fl": {"speed": sqrt(B**2 + C**2), "angle": atan2( C,  B)},
@@ -226,7 +284,10 @@ def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed):
         "fr": {"speed": sqrt(A**2 + C**2), "angle": atan2( C,  A)}
     }
 
-    # # 3. Print the final calculated output for the rover wheels
+    # print("\n--- DEBUG: calculateMotorConfiguration Input ---")
+    # print(f"Input Advance Speed:  {advance_speed}")
+    # print(f"Input Sidle Speed:    {sidle_speed}")
+    # print(f"Input Rotation Speed: {rotation_speed}")
     # print("--- DEBUG: Calculated Wheel Outputs ---")
     # for wheel, data in configuration.items():
     #     print(f"Wheel {wheel.upper()} -> Speed: {data['speed']:.3f}, Angle: {data['angle']:.3f}")
@@ -236,6 +297,9 @@ def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed):
 
         # TODO normalize
     # TODO better tests
+
+
+
 def calculateMotorConfigurationClampless(advance_speed,sidle_speed,rotation_speed):
 
 

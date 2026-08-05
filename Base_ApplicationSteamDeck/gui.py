@@ -80,7 +80,7 @@ class DashboardGUI:
         mode = getattr(self.state, 'drive_mode', 1)
         # s = self.state.steering_val
         debug_indicator = isFeasible(self.state.target_rps,self.state.sidle_val,self.state.steering_val)
-        motorConfiguration = calculateMotorConfiguration(self.state.target_rps,self.state.sidle_val,self.state.steering_val)
+        motorConfiguration = calculateMotorConfiguration(self.state.target_rps,self.state.sidle_val,self.state.steering_val,self.state)
 
         if debug_indicator:
             self.valid_motor_config.config(text="admissible",fg="#11EE11")
@@ -709,18 +709,18 @@ class DashboardGUI:
                     # Sprawdź, czy minęła co najmniej 1 sekunda od ostatniego alarmu
                     if current_time - self.state.last_alarm_time > 1.0:
                         
-                        if getattr(self, 'has_alarm', False):
-                            import subprocess
-                            try:
-                                # paplay to domyślny systemowy odtwarzacz audio na Steam Decku.
-                                # Używamy Popen, aby dźwięk odtworzył się asynchronicznie w tle (nie blokując GUI).
-                                subprocess.Popen(["paplay", "alarm.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                            except FileNotFoundError:
-                                try:
-                                    # Fallback: jeśli paplay nie istnieje, próbujemy standardowego ALSA
-                                    subprocess.Popen(["aplay", "alarm.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                                except Exception as e:
-                                    print(f"Błąd odtwarzania audio: {e}")
+                        # if getattr(self, 'has_alarm', False):
+                        #     import subprocess
+                        #     try:
+                        #         # paplay to domyślny systemowy odtwarzacz audio na Steam Decku.
+                        #         # Używamy Popen, aby dźwięk odtworzył się asynchronicznie w tle (nie blokując GUI).
+                        #         subprocess.Popen(["paplay", "alarm.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        #     except FileNotFoundError:
+                        #         try:
+                        #             # Fallback: jeśli paplay nie istnieje, próbujemy standardowego ALSA
+                        #             subprocess.Popen(["aplay", "alarm.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        #         except Exception as e:
+                        #             print(f"Błąd odtwarzania audio: {e}")
                         
                         self.state.log(f"!!! UWAGA: KRYTYCZNY LAG na ODrive {odrive_id} ({int(lag)}ms) !!!")
                         self.state.last_alarm_time = current_time

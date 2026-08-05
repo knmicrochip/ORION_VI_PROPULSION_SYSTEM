@@ -123,7 +123,7 @@ class MqttManager:
             # ===================================================
             if getattr(self.state, 'drive_mode', 1) == 1:
 
-                motorConfiguration = calculateMotorConfiguration(self.state.target_rps,self.state.sidle_val,self.state.steering_val)
+                motorConfiguration = calculateMotorConfiguration(self.state.target_rps,self.state.sidle_val,self.state.steering_val,self.state)
                 
                 # L = 0.9  
                 # W = 0.845  
