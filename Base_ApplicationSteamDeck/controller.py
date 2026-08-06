@@ -241,8 +241,8 @@ def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed, state 
             print(f"{intent} {getZoneIntent(RaycastVelocity[0],RaycastVelocity[1],RaycastVelocity[2])} {isRoverStopped(state)}")
             if isRoverStopped(state) == True:
                 match intent:
-                    case zones.FORWARD: RaycastVelocity = (10,0,0)
-                    case zones.BACKWARD: RaycastVelocity = (-10,0,0)
+                    case zones.FORWARD: RaycastVelocity = (100,0,0)
+                    case zones.BACKWARD: RaycastVelocity = (-100,0,0)
                     case zones.STOP: RaycastVelocity = (0,0,0)
             else:
                 advance_speed,sidle_speed,rotation_speed = 0,0,0
