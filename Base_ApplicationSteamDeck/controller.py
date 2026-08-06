@@ -47,8 +47,8 @@ LENGHT_REAR = WHEELBASE/2.0
 
 MAX_ANGLE = 0.785 # 1/4 PI #isFeasibleFromMotorConfiguration needs symmetry
 MIN_ANGLE = -0.785
-MAX_ANGLE_HIGH = pi/2
-MIN_ANGLE_HIGH = -pi/2
+# MAX_ANGLE_HIGH = pi/2  #assumtion that it's not used
+# MIN_ANGLE_HIGH = -pi/2
 
 NEAR_ZERO = 1e-09
 
@@ -283,6 +283,23 @@ def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed, state 
         "rr": {"speed": sqrt(A**2 + D**2), "angle": atan2( D,  A)},
         "fr": {"speed": sqrt(A**2 + C**2), "angle": atan2( C,  A)}
     }
+
+    # print("\n--- DEBUG: calculateMotorConfiguration Input ---")
+    # print(f"Input Advance Speed:  {advance_speed}")
+    # print(f"Input Sidle Speed:    {sidle_speed}")
+    # print(f"Input Rotation Speed: {rotation_speed}")
+    # print("--- DEBUG: Calculated Wheel Outputs ---")
+    # for wheel, data in configuration.items():
+    #     print(f"Wheel {wheel.upper()} -> Speed: {data['speed']:.3f}, Angle: {data['angle']:.3f}")
+    # print("---------------------------------------\n")
+
+    for wheel, data in configuration.items():
+        if data["angle"] > pi - MAX_ANGLE:
+            data["angle"] = data["angle"] - (pi)
+            data["speed"] = -data["speed"]
+        if data["angle"] < - pi + MAX_ANGLE:
+            data["angle"] = data["angle"] + (pi)
+            data["speed"] = -data["speed"]
 
     # print("\n--- DEBUG: calculateMotorConfiguration Input ---")
     # print(f"Input Advance Speed:  {advance_speed}")
