@@ -235,11 +235,11 @@ class InputManager:
         # Wybór źródła (Joystick vs Klawiatura)
         if self.joysticks:
             app_state.target_rps = joy_throttle * app_state.current_speed_limit
-            app_state.sidle_val = sidle * app_state.current_speed_limit
+            app_state.sidle_val = sidle * app_state.current_speed_limit * 0.5
         else:
             app_state.target_rps = self.key_throttle * app_state.current_speed_limit
             
-        app_state.steering_val = steering * app_state.current_speed_limit
+        app_state.steering_val = steering * app_state.current_speed_limit * 0.25
         
         
         
