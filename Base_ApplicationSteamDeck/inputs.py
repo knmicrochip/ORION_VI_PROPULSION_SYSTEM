@@ -131,18 +131,18 @@ class InputManager:
                     axis2 = joy.get_axis(2)
                     axis3 = joy.get_axis(3)
                     if abs(axis2) > config.JOYSTICK_DEADZONE:
-                        steering = axis2
+                        sidle = -axis2
                     else:
-                        steering = 0
+                        sidle = 0
 
                     if abs(axis1) > config.JOYSTICK_DEADZONE:
                         joy_throttle = -axis1
                     else:
                         joy_throttle = 0
                     if abs(axis0) > config.JOYSTICK_DEADZONE:
-                        sidle = -axis0
+                        steering = axis0
                     else:
-                        sidle = 0
+                        steering = 0
                 else:
                     # print("HEY!", flush=True)
                     axis0 = joy.get_axis(0)
@@ -154,23 +154,23 @@ class InputManager:
                     if app_state.swap_axis:
 
                         if abs(axis2) > config.JOYSTICK_DEADZONE:
-                            steering = axis2
+                            sidle = -axis2
                         else:
-                            steering = 0
+                            sidle = 0
                     else:
                         if abs(axis3) > config.JOYSTICK_DEADZONE:
-                            steering = axis3
+                            sidle = -axis3
                         else:
-                            steering = 0
+                            sidle = 0
 
                     if abs(axis1) > config.JOYSTICK_DEADZONE:
                         joy_throttle = -axis1
                     else:
                         joy_throttle = 0
                     if abs(axis0) > config.JOYSTICK_DEADZONE:
-                        sidle = -axis0
+                        steering = axis0
                     else:
-                        sidle = 0
+                        steering = 0
                 
 
 
@@ -238,9 +238,11 @@ class InputManager:
             app_state.sidle_val = sidle * app_state.current_speed_limit * 0.5
         else:
             app_state.target_rps = self.key_throttle * app_state.current_speed_limit
-            
-        app_state.steering_val = steering * app_state.current_speed_limit * 0.25
-        
+
+        if joy_throttle > 0:
+            app_state.steering_val = steering * app_state.current_speed_limit * 0.25
+        else:
+            app_state.steering_val = -steering * app_state.current_speed_limit * 0.25       
         
         
 
