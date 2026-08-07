@@ -688,6 +688,26 @@ class DashboardGUI:
                     widgets["lbl_packet_age"].config(fg="orange")
                 else:
                     widgets["lbl_packet_age"].config(fg="red")
+                    if not self.state.ebrake_active:
+                        self.state.ebrake_active = True
+                        self.state.ebrake_end_time = time.time() + 1.0 # Blokada na równe 1.0s
+                        self.state.trigger_ebrake_cmd = True
+                        self.state.log("!!! HAMOWANIE AWARYJNE !!!")
+                        if time.time() - self.state.last_alarm_time > 1000:
+                            self.state.last_alarm_time = time.time()
+                            if getattr(self, 'has_alarm', False):
+                                import subprocess
+                                try:
+                                    # paplay to domyślny systemowy odtwarzacz audio na Steam Decku.
+                                    # Używamy Popen, aby dźwięk odtworzył się asynchronicznie w tle (nie blokując GUI).
+                                    subprocess.Popen(["paplay", "alarm.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                except FileNotFoundError:
+                                    try:
+                                        # Fallback: jeśli paplay nie istnieje, próbujemy standardowego ALSA
+                                        subprocess.Popen(["aplay", "alarm.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                    except Exception as e:
+                                        print(f"Błąd odtwarzania audio: {e}")
+
             else:
                 widgets["lbl_packet_age"].config(text="Brak danych", fg="grey")
 
