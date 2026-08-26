@@ -240,7 +240,7 @@ class InputManager:
             app_state.target_rps = self.key_throttle * app_state.current_speed_limit
 
 
-        app_state.steering_val = steering * app_state.current_speed_limit * 0.5
+        app_state.steering_val = steering * app_state.current_speed_limit * 0.25
    
         
         
