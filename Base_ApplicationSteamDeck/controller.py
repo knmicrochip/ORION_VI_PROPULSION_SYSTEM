@@ -108,7 +108,7 @@ def isFeasible(advance_speed,sidle_speed,rotation_speed):
     is_valid = True
     sign = 0
     first = True
-    rotation_speed = rotation_speed*2 #WTF?
+    # rotation_speed = rotation_speed*2 #WTF?
     for plane in B_MATRIX:
         tmp = plane[0]*advance_speed + plane[1]*sidle_speed + plane[2]*rotation_speed
         # print(f"{tmp:.2f}, ",end='\t')
@@ -159,14 +159,14 @@ def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
 
     old_advance_speed = RaycastVelocity[0]
     old_sidle_speed = RaycastVelocity[1]
-    old_rotation_speed = 2 * RaycastVelocity[2]
+    old_rotation_speed = RaycastVelocity[2]
 
     print("current:",(advance_speed,sidle_speed,rotation_speed))
     print("old:",(old_advance_speed,old_sidle_speed,old_rotation_speed),isFeasible(old_advance_speed,old_sidle_speed,old_rotation_speed))
 
 
     clamp_candidates = []
-    rotation_speed = rotation_speed*2 #WTF?
+    # rotation_speed = rotation_speed*2 #WTF?
     for plane in B_MATRIX:
         
         # based on geogebra solution to 
@@ -246,6 +246,8 @@ def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed, state 
                     case zones.STOP: RaycastVelocity = (0,0,0)
             else:
                 advance_speed,sidle_speed,rotation_speed = 0,0,0
+        if intent == zones.BACKWARD:
+            rotation_speed = -rotation_speed
 
 
 
