@@ -570,14 +570,19 @@ class DashboardGUI:
         self.btn_reboot_odrive.pack(fill="x", padx=10, pady=(10, 2))
 
     def refresh_joysticks(self):
-        joysticks = self.input_manager.scan_joysticks()
+        controllers = self.input_manager.scan_devices()
+        flight_stick = self.input_manager.flight_stick
         for widget in self.joystick_list_frame.winfo_children():
             widget.destroy()
-        if not joysticks:
+        if (not controllers) and (not flight_stick):
             tk.Label(self.joystick_list_frame, text="BRAK JOYSTICKA (Użyj Klawiatury)", bg=config.BG_COLOR, fg="yellow").pack()
-        for i, joy in enumerate(joysticks):
-            joy_name = joy.get_name()[:15]
+        if flight_stick:
+            joy_name = flight_stick.get_name()[:20]
+            tk.Label(self.joystick_list_frame, text=f"Fligh Stick: {joy_name}", bg=config.BG_COLOR, fg="white").pack(anchor="w")
+        for i,con in enumerate(controllers):
+            joy_name = con.name[:20]
             tk.Label(self.joystick_list_frame, text=f"Joy {i}: {joy_name}", bg=config.BG_COLOR, fg="white").pack(anchor="w")
+
 
     def reset_trip(self, ids: list[str]):
         for id in ids:

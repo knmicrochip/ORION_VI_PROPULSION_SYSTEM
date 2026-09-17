@@ -161,8 +161,8 @@ def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
     old_sidle_speed = RaycastVelocity[1]
     old_rotation_speed = RaycastVelocity[2]
 
-    print("current:",(advance_speed,sidle_speed,rotation_speed))
-    print("old:",(old_advance_speed,old_sidle_speed,old_rotation_speed),isFeasible(old_advance_speed,old_sidle_speed,old_rotation_speed))
+    # print("current:",(advance_speed,sidle_speed,rotation_speed))
+    # print("old:",(old_advance_speed,old_sidle_speed,old_rotation_speed),isFeasible(old_advance_speed,old_sidle_speed,old_rotation_speed))
 
 
     clamp_candidates = []
@@ -171,7 +171,8 @@ def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
         
         # based on geogebra solution to 
         # Rozwiąż({x=x_{a}+(x_{a}-x_{b}) t,y=y_{a}+(y_{a}-y_{b}) t,z=z_{a}+(z_{a}-z_{b}) t,a x+b y+c z=0},{x,y,z,t})
-
+        # Solve({x=v_{x}+(v_{x}-x_{r}) t,y=v_{y}+(v_{y}-y_{r}) t,z=v_{z}+(v_{z}-z_{r}) t, B_{i1} x + B_{i2} y + B_{i3} z = 0},{x,y,z,t}))
+        # Solve({x=v_{x}+(v_{x}-x_{raycast}) t,y=v_{y}+(v_{y}-y_{raycast}) t,z=v_{z}+(v_{z}-z_{raycast}) t,B_{i1} x+B_{i2} y+B_{i3} z=0},{x,y,z,t})
         #the ray is wrong
 
 
@@ -210,7 +211,7 @@ def clampToFeasible(advance_speed,sidle_speed,rotation_speed):
 
 
 
-    print(clamp_candidates)
+    # print(clamp_candidates)
     if clamp_candidates:
         new_clamp = min(clamp_candidates) #python is crazy
     else:
@@ -238,7 +239,7 @@ def calculateMotorConfiguration(advance_speed,sidle_speed,rotation_speed, state 
         if (intent
             != 
             getZoneIntent(RaycastVelocity[0],RaycastVelocity[1],RaycastVelocity[2])):
-            print(f"{intent} {getZoneIntent(RaycastVelocity[0],RaycastVelocity[1],RaycastVelocity[2])} {isRoverStopped(state)}")
+            # print(f"{intent} {getZoneIntent(RaycastVelocity[0],RaycastVelocity[1],RaycastVelocity[2])} {isRoverStopped(state)}")
             if isRoverStopped(state) == True:
                 match intent:
                     case zones.FORWARD: RaycastVelocity = (100,0,0)
