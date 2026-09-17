@@ -9,6 +9,7 @@ import math
 import pygame
 import os
 import subprocess
+import sys
 
 # Matplotlib
 import matplotlib
@@ -49,6 +50,11 @@ class DashboardGUI:
 
         self.setup_ui()
         self._start_network_monitor()
+
+    def Close(self):
+        # pygame.quit()
+        # root.destroy()
+        sys.exit()
 
     def _ping_host(self, ip):
         """Pomocnicza funkcja pingująca dany adres IP (nieblokująca)"""
