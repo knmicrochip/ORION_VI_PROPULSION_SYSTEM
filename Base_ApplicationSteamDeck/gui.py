@@ -269,8 +269,8 @@ class DashboardGUI:
         self.joystick_list_frame = tk.Frame(self.joy_container, bg=config.BG_COLOR)
 
         
-        # tk.Button(self.joy_container, text="Quit!", command=self.Close, 
-        #             bg=config.BTN_RESET_COLOR, fg="white", font=("Arial", 10, "bold")).pack(fill="x", pady=(0,10))
+        tk.Button(self.joy_container, text="Quit!", command=self.Close, 
+                    bg=config.BTN_RESET_COLOR, fg="white", font=("Arial", 10, "bold")).pack(fill="x", pady=(0,10))
 
         self.invert_btn = tk.Button(
             self.joy_container, 
