@@ -114,11 +114,12 @@ class DashboardGUI:
 
         else: # Tryb 2: Obrót (X-turn)
             angle = 0.8
+            mult = 10
             fl, fr, rl, rr = -angle, angle, angle, -angle
-            fl_speed = 0
-            fr_speed = 0
-            rl_speed = 0
-            rr_speed = 0
+            fl_speed = self.state.steering_val  * mult
+            fr_speed = -self.state.steering_val * mult
+            rl_speed = self.state.steering_val * mult
+            rr_speed = -self.state.steering_val * mult
             
         # Rysowanie korpusu
         self.rover_canvas.create_rectangle(cx-40, cy-70, cx+40, cy+70, fill="#222", outline="#444")
@@ -148,17 +149,24 @@ class DashboardGUI:
             dx = -arrow_length * math.sin(rad_angle) * direction
             dy = -arrow_length * math.cos(rad_angle) * direction
             
-            arrow_color = "#FFFF00" if (abs(rad_angle) <= 0.785 or abs(rad_angle) >= 3.141-0.785) else "#FF1111"
-            
+            mode = getattr(self.state, 'drive_mode', 1)
+            if mode == 1:
+                arrow_color = "#FFFF00" if (abs(rad_angle) <= 0.785 or abs(rad_angle) >= 3.141-0.785) else "#FF1111"
+                width = 4
+            elif mode == 2:
+                arrow_color = '#abc9ff'
+                width = 6
+
+
             # Rysuj strzałkę tylko wtedy, gdy prędkość nie jest zerem
             if abs(speed) > 0.05:
-                self.rover_canvas.create_line(x, y, x + dx, y + dy, fill=arrow_color, width=4, arrow="last")
+                self.rover_canvas.create_line(x, y, x + dx, y + dy, fill=arrow_color, width=width, arrow="last")
             
             # Wyświetlanie wartości tekstowej prędkości obok koła
             # text_offset_x = 25 if x > cx else -25
             # self.rover_canvas.create_text(x + text_offset_x, y, text=f"{speed:.1f}", fill="cyan", font=("Arial", 9, "bold"))
 
-        wheel_color = "#00aa00" if mode == 1 else "#FFAA00"
+        wheel_color = "#00aa00" if mode == 1 else "#ab7200"
         
         # Rozstaw kół na rysunku (Przekazywanie współrzędnych, kątów oraz prędkości)
         draw_wheel(cx-60, cy-50, fl, fl_speed, wheel_color) # FL
