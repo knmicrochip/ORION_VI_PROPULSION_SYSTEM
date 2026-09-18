@@ -37,10 +37,10 @@ def main():
             root.attributes('-fullscreen', False)
             root.geometry("1200x800")
         else:
-            input_manager.handle_keyboard('press', event.keysym)
+            input_manager.handle_keyboard('press', event.keysym, app_state)
 
     def on_key_release(event):
-        input_manager.handle_keyboard('release', event.keysym)
+        input_manager.handle_keyboard('release', event.keysym, app_state)
 
     root.bind("<KeyPress>", on_key_press)
     root.bind("<KeyRelease>", on_key_release)

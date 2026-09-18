@@ -3,6 +3,7 @@ import pygame
 import config
 import time
 import pygame._sdl2.controller
+from controller import isRoverStopped
 
 
 class InputManager:
@@ -66,7 +67,7 @@ class InputManager:
 
         return self.gamepads
 
-    def handle_keyboard(self, event_type, key_code):
+    def handle_keyboard(self, event_type, key_code, app_state):
         """Metoda wywoływana z GUI przy zdarzeniach klawiatury"""
         k = key_code.lower()
 
@@ -75,25 +76,33 @@ class InputManager:
             elif k == 's': self.key_throttle = -1.0
             elif k == 'r': self.key_max_limit = min(config.ABSOLUTE_MAX_LIMIT, self.key_max_limit + 1.0)
             elif k == 'f': self.key_max_limit = max(1.0, self.key_max_limit - 1.0)
-            elif k == 'a': self.key_steering = 1.0 
-            elif k == 'd': self.key_steering = -1.0
+            elif k == 'a': self.key_steering = -1.0 
+            elif k == 'd': self.key_steering = 1.0
+            elif k == 'u': self._handle_mode_toggle(app_state)
 
         elif event_type == 'release':
-            if k in ['w', 's', 'a', 'd']: 
+            app_state.sidle_val = 0.0
+            if k == 'w':
                 self.key_throttle = 0.0
+            elif k == 's':
+                self.key_throttle = 0.0
+            elif k == 'a':
+                self.key_steering = 0.0
+            elif k == 'd':
                 self.key_steering = 0.0
 
     def _handle_mode_toggle(self, app_state):
         """Wspólna logika przycisku 'A' / button 0 (Tryb Obrotu)."""
         # ZABEZPIECZENIE: Zmiana trybu tylko w spoczynku
-        if abs(app_state.target_rps) < 0.1:
+        now = time.time()
+        if isRoverStopped(app_state) and (now - app_state.mode_switch_time > 1.0):
             if app_state.drive_mode == 1:
                 app_state.drive_mode = 2
-                app_state.mode_switch_time = time.time()
+                app_state.mode_switch_time = now
                 app_state.log(">>> TRYB JAZDY: OBRÓT W MIEJSCU (Czekaj na serwa) <<<")
-            else:
+            elif app_state.drive_mode == 2:
                 app_state.drive_mode = 1
-                app_state.mode_switch_time = time.time()
+                app_state.mode_switch_time = now
                 app_state.log(">>> TRYB JAZDY: NORMALNY <<<")
         else:
             app_state.log("!!! ODMOWA ZMIANY TRYBU: Najpierw zatrzymaj łazika !!!")
