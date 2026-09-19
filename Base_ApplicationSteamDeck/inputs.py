@@ -174,14 +174,14 @@ class InputManager:
                 elif event.value[1] == -1:  # Strzałka w dół
                     self.pad_max_limit = max(1.0, self.pad_max_limit - 1.0)
 
-            # --- Drążek Logitech: przyciski jako JOYBUTTONDOWN ---
-            elif event.type == pygame.JOYBUTTONDOWN:
-                if event.button == 0:
-                    self._handle_mode_toggle(app_state)
-                elif event.button == 9:
-                    self._handle_lock_toggle(app_state)
-                elif event.button == 2:
-                    self._handle_full_start(app_state)
+            # # --- Drążek Logitech: przyciski jako JOYBUTTONDOWN ---
+            # elif event.type == pygame.JOYBUTTONDOWN:
+            #     if event.button == 0:
+            #         self._handle_mode_toggle(app_state)
+            #     elif event.button == 9:
+            #         self._handle_lock_toggle(app_state)
+            #     elif event.button == 2:
+            #         self._handle_full_start(app_state)
 
         joy_throttle = 0.0
         steering = 0.0
@@ -201,9 +201,9 @@ class InputManager:
                 axis1 = joy.get_axis(1)
                 axis2 = joy.get_axis(2)
 
-                steering = axis0 if abs(axis0) > config.JOYSTICK_DEADZONE else 0.0
-                joy_throttle = -axis1 if abs(axis1) > config.JOYSTICK_DEADZONE else 0.0
-                sidle = -axis2 if abs(axis2) > config.JOYSTICK_DEADZONE else 0.0
+                steering = axis0 if abs(axis0) > config.FLIGHTSTICK_DEADZONE else 0.0
+                joy_throttle = -axis1 if abs(axis1) > config.FLIGHTSTICK_DEADZONE else 0.0
+                sidle = -axis2 if abs(axis2) > config.FLIGHTSTICK_DEADZONE else 0.0
 
                 # --- Awaryjne hamowanie L2 + R2, jeśli drążek je udostępnia ---
                 # l2_pressed = False
